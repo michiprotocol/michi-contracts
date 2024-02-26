@@ -4,3 +4,6 @@
 [submodule "lib/tokenbound"]
 	path = lib/tokenbound
 	url = https://github.com/tokenbound/contracts
+[submodule "lib/pendlefinance/contracts"]
+	path = lib/pendlefinance/contracts
+	url = https://github.com/pendle-finance/pendle-core-v2-public
