@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "erc6551/interfaces/IERC6551Registry.sol";
-import "tokenbound/src/AccountV3.sol";
+import "tokenbound/src/AccountV3Upgradable.sol";
 import "tokenbound/src/AccountProxy.sol";
 
 import "./interfaces/IMichiBackpack.sol";
@@ -21,6 +21,9 @@ contract MichiHelper is Ownable {
 
     /// @notice instance of current 6551 wallet implementation
     address public erc6551Implementation;
+
+    /// @notice instance of current 6551 wallet proxy
+    address public erc6551Proxy;
 
     /// @notice address that receives fees (if applicable)
     address public feeReceiver;
@@ -45,12 +48,12 @@ contract MichiHelper is Ownable {
     address[] public listApprovedTokens;
 
     /// @notice emitted when a new Backpack is minted and corresponding 6551 wallet is initialized
-    event BackpackCreated(address indexed sender, address indexed backpack);
+    event BackpackCreated(address indexed sender, address indexed backpack, address nftContract, uint256 tokenId);
 
     /// @notice emitted when a Backpack receives a deposit
     event Deposit(
         address indexed sender,
-        address indexed receiver,
+        address indexed backpack,
         address indexed token,
         uint256 amountAfterFees,
         uint256 feeTaken
@@ -80,6 +83,7 @@ contract MichiHelper is Ownable {
     constructor(
         address erc6551Registry_,
         address erc6551Implementation_,
+        address erc6551Proxy_,
         address michiBackpack_,
         address feeReceiver_,
         uint256 depositFee_,
@@ -87,6 +91,7 @@ contract MichiHelper is Ownable {
     ) {
         erc6551Registry = IERC6551Registry(erc6551Registry_);
         erc6551Implementation = erc6551Implementation_;
+        erc6551Proxy = erc6551Proxy_;
         michiBackpack = IMichiBackpack(michiBackpack_);
         feeReceiver = feeReceiver_;
         depositFee = depositFee_;
@@ -99,18 +104,16 @@ contract MichiHelper is Ownable {
             michiBackpack.mint{value: msg.value}(msg.sender);
             bytes32 salt = bytes32(abi.encode(0));
             address payable newBackpack = payable(
-                erc6551Registry.createAccount(
-                    erc6551Implementation, salt, block.chainid, address(michiBackpack), currentIndex
-                )
+                erc6551Registry.createAccount(erc6551Proxy, salt, block.chainid, address(michiBackpack), currentIndex)
             );
-
-            if (AccountV3(newBackpack).owner() != msg.sender) revert OwnerMismatch();
-            emit BackpackCreated(msg.sender, newBackpack);
+            AccountProxy(newBackpack).initialize(erc6551Implementation);
+            if (AccountV3Upgradable(newBackpack).owner() != msg.sender) revert OwnerMismatch();
+            emit BackpackCreated(msg.sender, newBackpack, address(michiBackpack), currentIndex);
         }
     }
 
     function depositYT(address token, address backpack, uint256 amount, bool takeFee) external {
-        if (AccountV3(payable(backpack)).owner() != msg.sender) revert UnauthorizedUser(msg.sender);
+        if (AccountV3Upgradable(payable(backpack)).owner() != msg.sender) revert UnauthorizedUser(msg.sender);
         uint256 fee;
 
         if (takeFee) {
@@ -149,6 +152,10 @@ contract MichiHelper is Ownable {
         }
     }
 
+    function getApprovedTokens() external view returns (address[] memory) {
+        return listApprovedTokens;
+    }
+
     function setDepositFee(uint256 newDepositFee) external onlyOwner {
         if (newDepositFee > 500) revert InvalidDepositFee(newDepositFee);
         depositFee = newDepositFee;
@@ -161,5 +168,9 @@ contract MichiHelper is Ownable {
 
     function updateImplementation(address newImplementation) external onlyOwner {
         erc6551Implementation = newImplementation;
+    }
+
+    function updateProxy(address newProxy) external onlyOwner {
+        erc6551Proxy = newProxy;
     }
 }

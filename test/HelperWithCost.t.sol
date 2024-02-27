@@ -6,7 +6,11 @@ import "forge-std/Test.sol";
 import "erc6551/ERC6551Registry.sol";
 
 import "tokenbound/src/AccountV3.sol";
+import "tokenbound/src/AccountV3Upgradable.sol";
 import "tokenbound/src/AccountProxy.sol";
+import "tokenbound/src/AccountGuardian.sol";
+
+import "tokenbound/lib/multicall-authenticated/src/Multicall3.sol";
 
 import "./TestContracts/MockYT.sol";
 
@@ -17,7 +21,12 @@ contract HelperCostTest is Test {
     MichiBackpack public michiBackpack;
     MichiHelper public michiHelper;
     MockYT public mockYT;
+
+    Multicall3 public multicall;
     AccountV3 public implementation;
+    AccountV3Upgradable public upgradeableImplementation;
+    AccountGuardian public guardian;
+    AccountProxy public proxy;
     ERC6551Registry public registry;
 
     function setUp() public {
@@ -25,10 +34,15 @@ contract HelperCostTest is Test {
 
         michiBackpack = new MichiBackpack(0, 0);
         registry = new ERC6551Registry();
+        guardian = new AccountGuardian(address(this));
+        multicall = new Multicall3();
         implementation = new AccountV3(address(1), address(1), address(1), address(1));
+        upgradeableImplementation =
+            new AccountV3Upgradable(address(1), address(multicall), address(registry), address(guardian));
+        proxy = new AccountProxy(address(guardian), address(implementation));
         mockYT = new MockYT();
         michiHelper = new MichiHelper(
-            address(registry), address(implementation), address(michiBackpack), feeRecipient, 100, 10000
+            address(registry), address(implementation), address(proxy), address(michiBackpack), feeRecipient, 0, 10000
         );
     }
 
@@ -37,8 +51,7 @@ contract HelperCostTest is Test {
         uint256 index = michiBackpack.currentIndex();
 
         // compute predicted address using expected id
-        address computedAddress =
-            registry.account(address(implementation), 0, block.chainid, address(michiBackpack), index);
+        address computedAddress = registry.account(address(proxy), 0, block.chainid, address(michiBackpack), index);
 
         vm.prank(user1);
         michiHelper.createBackpack(1);
@@ -47,7 +60,7 @@ contract HelperCostTest is Test {
         assertEq(michiBackpack.ownerOf(index), user1);
 
         // check that predicted address is owned by user1
-        AccountV3 account = AccountV3(payable(computedAddress));
+        AccountV3Upgradable account = AccountV3Upgradable(payable(computedAddress));
         assertEq(account.owner(), user1);
     }
 
@@ -57,8 +70,7 @@ contract HelperCostTest is Test {
         uint256 index = michiBackpack.currentIndex();
 
         // compute predicted address using expected id
-        address computedAddress =
-            registry.account(address(implementation), 0, block.chainid, address(michiBackpack), index);
+        address computedAddress = registry.account(address(proxy), 0, block.chainid, address(michiBackpack), index);
 
         vm.prank(user1);
         michiHelper.createBackpack(1);
@@ -98,7 +110,7 @@ contract HelperCostTest is Test {
         assertEq(michiHelper.feesCollectedByToken(address(mockYT)), feeAmount);
 
         // user2 should fail transfering out YT
-        AccountV3 account = AccountV3(payable(computedAddress));
+        AccountV3Upgradable account = AccountV3Upgradable(payable(computedAddress));
         bytes memory transferCall = abi.encodeWithSignature("transfer(address,uint256)", user1, depositAmountAfterFees);
         vm.prank(user2);
         vm.expectRevert(NotAuthorized.selector);

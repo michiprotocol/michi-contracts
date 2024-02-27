@@ -6,7 +6,11 @@ import "forge-std/Test.sol";
 import "erc6551/ERC6551Registry.sol";
 
 import "tokenbound/src/AccountV3.sol";
+import "tokenbound/src/AccountV3Upgradable.sol";
 import "tokenbound/src/AccountProxy.sol";
+import "tokenbound/src/AccountGuardian.sol";
+
+import "tokenbound/lib/multicall-authenticated/src/Multicall3.sol";
 
 import "./TestContracts/MockYT.sol";
 
@@ -17,7 +21,12 @@ contract HelperSecondaryTest is Test {
     MichiBackpack public michiBackpack;
     MichiHelper public michiHelper;
     MockYT public mockYT;
+
+    Multicall3 public multicall;
     AccountV3 public implementation;
+    AccountV3Upgradable public upgradeableImplementation;
+    AccountGuardian public guardian;
+    AccountProxy public proxy;
     ERC6551Registry public registry;
 
     function setUp() public {
@@ -25,10 +34,16 @@ contract HelperSecondaryTest is Test {
 
         michiBackpack = new MichiBackpack(0, 0);
         registry = new ERC6551Registry();
+        guardian = new AccountGuardian(address(this));
+        multicall = new Multicall3();
         implementation = new AccountV3(address(1), address(1), address(1), address(1));
+        upgradeableImplementation =
+            new AccountV3Upgradable(address(1), address(multicall), address(registry), address(guardian));
+        proxy = new AccountProxy(address(guardian), address(implementation));
         mockYT = new MockYT();
-        michiHelper =
-            new MichiHelper(address(registry), address(implementation), address(michiBackpack), feeRecipient, 0, 10000);
+        michiHelper = new MichiHelper(
+            address(registry), address(implementation), address(proxy), address(michiBackpack), feeRecipient, 0, 10000
+        );
     }
 
     function testDepositFee() public {
