@@ -6,4 +6,3 @@ erc6551/=lib/tokenbound/lib/erc6551/src/
 forge-std/=lib/forge-std/src/
 multicall-authenticated/=lib/tokenbound/lib/multicall-authenticated/
 tokenbound/=lib/tokenbound/
-pendlefinance/=lib/pendlefinance/
