@@ -80,6 +80,14 @@ contract MichiHelper is Ownable {
     /// @notice error returned when attempting to remove an unapproved token
     error TokenNotApproved(address token);
 
+    /// @notice constructor for MichiHelper contract
+    /// @param erc6551Registry_ address of 6551 registry
+    /// @param erc6551Implementation_ address of current 6551 implementation
+    /// @param erc6551Proxy_ address of current 6551 proxy
+    /// @param michiBackpack_ address of MichiBackpack ERC721
+    /// @param feeReceiver_ address to receive deposit fees
+    /// @param depositFee_ initial deposit fee
+    /// @param feePrecision_ denominiator for fees
     constructor(
         address erc6551Registry_,
         address erc6551Implementation_,
@@ -98,6 +106,8 @@ contract MichiHelper is Ownable {
         feePrecision = feePrecision_;
     }
 
+    /// @notice mint MichiBackpack ERC721, deploy 6551 wallet owned by ERC721, and initialize to current implementation
+    /// @param quantity number of backpacks and wallets to setup
     function createBackpack(uint256 quantity) external payable {
         for (uint256 i = 0; i < quantity; i++) {
             uint256 currentIndex = michiBackpack.getCurrentIndex();
@@ -112,7 +122,12 @@ contract MichiHelper is Ownable {
         }
     }
 
-    function depositYT(address token, address backpack, uint256 amount, bool takeFee) external {
+    /// @notice deposit a supported token into backpack address
+    /// @param token address of supported token to deposit
+    /// @param backpack address of backpack to deposit into
+    /// @param amount token amount of deposit
+    /// @param takeFee boolean to pay a deposit fee
+    function depositToken(address token, address backpack, uint256 amount, bool takeFee) external {
         if (AccountV3Upgradable(payable(backpack)).owner() != msg.sender) revert UnauthorizedUser(msg.sender);
         uint256 fee;
 

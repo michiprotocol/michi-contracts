@@ -94,14 +94,14 @@ contract HelperCostTest is Test {
         mockYT.approve(address(michiHelper), 10 ether);
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(MichiHelper.UnauthorizedUser.selector, user2));
-        michiHelper.depositYT(address(mockYT), computedAddress, 5 ether, true);
+        michiHelper.depositToken(address(mockYT), computedAddress, 5 ether, true);
 
         // user1 should succeed in depositing YT
 
         vm.prank(user1);
         mockYT.approve(address(michiHelper), 10 ether);
         vm.prank(user1);
-        michiHelper.depositYT(address(mockYT), computedAddress, 5 ether, true);
+        michiHelper.depositToken(address(mockYT), computedAddress, 5 ether, true);
 
         assertEq(mockYT.balanceOf(computedAddress), depositAmountAfterFees);
         assertEq(mockYT.balanceOf(michiHelper.feeReceiver()), feeAmount);
