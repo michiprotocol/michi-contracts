@@ -13,11 +13,11 @@ import "tokenbound/src/AccountGuardian.sol";
 import "tokenbound/lib/multicall-authenticated/src/Multicall3.sol";
 import "./TestContracts/MockYT.sol";
 
-import "src/MichiBackpack.sol";
+import "src/MichiChest.sol";
 import {MichiHelper} from "src/MichiHelper.sol";
 
 contract HelperTestFuzz is Test {
-    MichiBackpack public michiBackpack;
+    MichiChest public michiChest;
     MichiHelper public michiHelper;
     MockYT public mockYT;
 
@@ -31,36 +31,41 @@ contract HelperTestFuzz is Test {
     function setUp() public {
         address feeRecipient = vm.addr(5);
 
-        michiBackpack = new MichiBackpack(0, 0);
+        michiChest = new MichiChest(0, 0);
         registry = new ERC6551Registry();
         guardian = new AccountGuardian(address(this));
         multicall = new Multicall3();
-        implementation = new AccountV3(address(1), address(1), address(1), address(1));
         upgradeableImplementation =
             new AccountV3Upgradable(address(1), address(multicall), address(registry), address(guardian));
-        proxy = new AccountProxy(address(guardian), address(implementation));
+        proxy = new AccountProxy(address(guardian), address(upgradeableImplementation));
         mockYT = new MockYT();
         michiHelper = new MichiHelper(
-            address(registry), address(implementation), address(proxy), address(michiBackpack), feeRecipient, 0, 10000
+            address(registry),
+            address(upgradeableImplementation),
+            address(proxy),
+            address(michiChest),
+            feeRecipient,
+            0,
+            10000
         );
     }
 
-    function testCreateBackpack(uint256 quantity) public {
+    function testCreateChest(uint256 quantity) public {
         vm.assume(quantity > 0);
         vm.assume(quantity < 10);
         address user1 = vm.addr(1);
-        uint256 firstIdMinted = michiBackpack.currentIndex();
+        uint256 firstIdMinted = michiChest.currentIndex();
 
         vm.prank(user1);
-        michiHelper.createBackpack(quantity);
+        michiHelper.createChest(quantity);
 
-        uint256 nextId = michiBackpack.currentIndex();
+        uint256 nextId = michiChest.currentIndex();
 
         for (uint256 i = firstIdMinted; i < nextId; i++) {
             // check that nft is minted to user1
-            assertEq(michiBackpack.ownerOf(i), user1);
+            assertEq(michiChest.ownerOf(i), user1);
 
-            address computedAddress = registry.account(address(proxy), 0, block.chainid, address(michiBackpack), i);
+            address computedAddress = registry.account(address(proxy), 0, block.chainid, address(michiChest), i);
 
             // check that predicted address is owned by user1
             AccountV3 account = AccountV3(payable(computedAddress));
@@ -72,13 +77,13 @@ contract HelperTestFuzz is Test {
         vm.assume(amount < 100000 ether);
         address user1 = vm.addr(1);
         address user2 = vm.addr(2);
-        uint256 index = michiBackpack.currentIndex();
+        uint256 index = michiChest.currentIndex();
 
         // compute predicted address using expected id
-        address computedAddress = registry.account(address(proxy), 0, block.chainid, address(michiBackpack), index);
+        address computedAddress = registry.account(address(proxy), 0, block.chainid, address(michiChest), index);
 
         vm.prank(user1);
-        michiHelper.createBackpack(1);
+        michiHelper.createChest(1);
 
         // mint mock YT tokens
         mockYT.mint(user1, amount);

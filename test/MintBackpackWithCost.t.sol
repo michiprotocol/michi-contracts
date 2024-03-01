@@ -2,22 +2,22 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "src/MichiBackpack.sol";
+import "src/MichiChest.sol";
 
-contract BackpackTest2 is Test {
-    MichiBackpack public michiBackpack;
+contract ChestTest2 is Test {
+    MichiChest public michiChest;
 
     function setUp() public {
-        michiBackpack = new MichiBackpack(0, 0.5 ether);
+        michiChest = new MichiChest(0, 0.5 ether);
     }
 
     function testPrice() public {
-        assertEq(michiBackpack.mintPrice(), 0.5 ether);
+        assertEq(michiChest.mintPrice(), 0.5 ether);
     }
 
     function testPriceChange() public {
-        michiBackpack.setMintPrice(1 ether);
-        assertEq(michiBackpack.mintPrice(), 1 ether);
+        michiChest.setMintPrice(1 ether);
+        assertEq(michiChest.mintPrice(), 1 ether);
     }
 
     function testMint() public {
@@ -25,15 +25,15 @@ contract BackpackTest2 is Test {
         address user2 = vm.addr(2);
         vm.deal(user1, 2 ether);
 
-        uint256 idToMint = michiBackpack.getCurrentIndex();
-        uint256 supplyBeforeMint = michiBackpack.totalSupply();
+        uint256 idToMint = michiChest.getCurrentIndex();
+        uint256 supplyBeforeMint = michiChest.totalSupply();
         vm.prank(user1);
-        michiBackpack.mint{value: 0.5 ether}(user2);
+        michiChest.mint{value: 0.5 ether}(user2);
 
-        assertEq(michiBackpack.getCurrentIndex(), idToMint + 1);
-        assertEq(michiBackpack.totalSupply(), supplyBeforeMint + 1);
-        assertEq(michiBackpack.ownerOf(idToMint), user2);
-        assertEq(michiBackpack.balanceOf(user2), 1);
+        assertEq(michiChest.getCurrentIndex(), idToMint + 1);
+        assertEq(michiChest.totalSupply(), supplyBeforeMint + 1);
+        assertEq(michiChest.ownerOf(idToMint), user2);
+        assertEq(michiChest.balanceOf(user2), 1);
     }
 
     function testRevertWhenIncorrectValueSent() public {
@@ -42,8 +42,8 @@ contract BackpackTest2 is Test {
         vm.deal(user1, 2 ether);
 
         vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(MichiBackpack.InvalidPayableAmount.selector, 1 ether));
-        michiBackpack.mint{value: 1 ether}(user2);
+        vm.expectRevert(abi.encodeWithSelector(MichiChest.InvalidPayableAmount.selector, 1 ether));
+        michiChest.mint{value: 1 ether}(user2);
     }
 
     function testWithdrawBalance() public {
@@ -52,13 +52,13 @@ contract BackpackTest2 is Test {
         vm.deal(user1, 2 ether);
 
         vm.prank(user1);
-        michiBackpack.mint{value: 0.5 ether}(user2);
+        michiChest.mint{value: 0.5 ether}(user2);
 
-        uint256 backpackBalanceBeforeWithdraw = address(michiBackpack).balance;
+        uint256 chestBalanceBeforeWithdraw = address(michiChest).balance;
         uint256 balanceBeforeWithdraw = msg.sender.balance;
-        michiBackpack.withdraw(msg.sender);
-        assertEq(address(michiBackpack).balance, 0);
-        assertApproxEqAbs(msg.sender.balance, backpackBalanceBeforeWithdraw + balanceBeforeWithdraw, 0.01 ether);
+        michiChest.withdraw(msg.sender);
+        assertEq(address(michiChest).balance, 0);
+        assertApproxEqAbs(msg.sender.balance, chestBalanceBeforeWithdraw + balanceBeforeWithdraw, 0.01 ether);
     }
 
     function testRevertWhenUnauthorizedWithdrawal() public {
@@ -67,10 +67,10 @@ contract BackpackTest2 is Test {
         vm.deal(user1, 2 ether);
 
         vm.prank(user1);
-        michiBackpack.mint{value: 0.5 ether}(user2);
+        michiChest.mint{value: 0.5 ether}(user2);
 
         vm.prank(user1);
         vm.expectRevert(bytes("Ownable: caller is not the owner"));
-        michiBackpack.withdraw(user1);
+        michiChest.withdraw(user1);
     }
 }
