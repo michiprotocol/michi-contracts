@@ -1,6 +1,6 @@
 ## Arbitrum One Deployed Contracts
 
-MichiBackpack: 0x242C50B90ab42dD4CC99b890cbBCd24bD4FBad5a<br />
+MichiChest: 0x242C50B90ab42dD4CC99b890cbBCd24bD4FBad5a<br />
 MichiHelper: 0x3Ea9dF7156DCFaE54FFc6b2916070271841CE08A<br />
 
 ## ERC-6551 Contracts
