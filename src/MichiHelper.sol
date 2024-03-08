@@ -8,13 +8,13 @@ import "erc6551/interfaces/IERC6551Registry.sol";
 import "tokenbound/src/AccountV3Upgradable.sol";
 import "tokenbound/src/AccountProxy.sol";
 
-import "./interfaces/IMichiChest.sol";
+import "./interfaces/IMichiWalletNFT.sol";
 
 contract MichiHelper is Ownable {
     using SafeERC20 for IERC20;
 
-    /// @notice instance of Michi Chest (NFT that represents 6551 wallet)
-    IMichiChest public michiChest;
+    /// @notice instance of Michi Wallet NFT (NFT that represents 6551 wallet)
+    IMichiWalletNFT public michiWalletNFT;
 
     /// @notice instance of ERC6551 Registry
     IERC6551Registry public erc6551Registry;
@@ -47,12 +47,16 @@ contract MichiHelper is Ownable {
     /// @notice array of approved tokens to be deposited
     address[] public listApprovedTokens;
 
-    /// @notice emitted when a new Chest is minted and corresponding 6551 wallet is initialized
-    event ChestCreated(address indexed sender, address indexed chest, address nftContract, uint256 tokenId);
+    /// @notice emitted when a new wallet NFT is minted and corresponding 6551 wallet is initialized
+    event WalletCreated(address indexed sender, address indexed walletAddress, address nftContract, uint256 tokenId);
 
-    /// @notice emitted when a Chest receives a deposit
+    /// @notice emitted when an ERC-6551 wallet receives a deposit
     event Deposit(
-        address indexed sender, address indexed chest, address indexed token, uint256 amountAfterFees, uint256 feeTaken
+        address indexed sender,
+        address indexed walletAddress,
+        address indexed token,
+        uint256 amountAfterFees,
+        uint256 feeTaken
     );
 
     /// @notice error returned when a user tries to deposit an unauthorized token
@@ -80,7 +84,7 @@ contract MichiHelper is Ownable {
     /// @param erc6551Registry_ address of 6551 registry
     /// @param erc6551Implementation_ address of current 6551 implementation
     /// @param erc6551Proxy_ address of current 6551 proxy
-    /// @param michiChest_ address of MichiChest ERC721
+    /// @param michiWalletNFT_ address of MichiWalletNFT ERC721
     /// @param feeReceiver_ address to receive deposit fees
     /// @param depositFee_ initial deposit fee
     /// @param feePrecision_ denominiator for fees
@@ -88,7 +92,7 @@ contract MichiHelper is Ownable {
         address erc6551Registry_,
         address erc6551Implementation_,
         address erc6551Proxy_,
-        address michiChest_,
+        address michiWalletNFT_,
         address feeReceiver_,
         uint256 depositFee_,
         uint256 feePrecision_
@@ -96,52 +100,52 @@ contract MichiHelper is Ownable {
         erc6551Registry = IERC6551Registry(erc6551Registry_);
         erc6551Implementation = erc6551Implementation_;
         erc6551Proxy = erc6551Proxy_;
-        michiChest = IMichiChest(michiChest_);
+        michiWalletNFT = IMichiWalletNFT(michiWalletNFT_);
         feeReceiver = feeReceiver_;
         depositFee = depositFee_;
         feePrecision = feePrecision_;
     }
 
-    /// @notice mint MichiChest ERC721, deploy 6551 wallet owned by ERC721, and initialize to current implementation
-    /// @param quantity number of chests and wallets to setup
-    function createChest(uint256 quantity) external payable {
+    /// @notice mint MichiWalletNFT, deploy 6551 wallet owned by NFT, and initialize to current implementation
+    /// @param quantity number of NFTs and wallets to setup
+    function createWallet(uint256 quantity) external payable {
         for (uint256 i = 0; i < quantity; i++) {
-            uint256 currentIndex = michiChest.getCurrentIndex();
-            michiChest.mint{value: msg.value}(msg.sender);
+            uint256 currentIndex = michiWalletNFT.getCurrentIndex();
+            michiWalletNFT.mint{value: msg.value}(msg.sender);
             bytes32 salt = bytes32(abi.encode(0));
-            address payable newChest = payable(
-                erc6551Registry.createAccount(erc6551Proxy, salt, block.chainid, address(michiChest), currentIndex)
+            address payable newWallet = payable(
+                erc6551Registry.createAccount(erc6551Proxy, salt, block.chainid, address(michiWalletNFT), currentIndex)
             );
-            AccountProxy(newChest).initialize(erc6551Implementation);
-            if (AccountV3Upgradable(newChest).owner() != msg.sender) revert OwnerMismatch();
-            emit ChestCreated(msg.sender, newChest, address(michiChest), currentIndex);
+            AccountProxy(newWallet).initialize(erc6551Implementation);
+            if (AccountV3Upgradable(newWallet).owner() != msg.sender) revert OwnerMismatch();
+            emit WalletCreated(msg.sender, newWallet, address(michiWalletNFT), currentIndex);
         }
     }
 
-    /// @notice deposit a supported token into chest address
+    /// @notice deposit a supported token into EERC-6551 wallet
     /// @param token address of supported token to deposit
-    /// @param chest address of chest to deposit into
+    /// @param walletAddress address of wallet to deposit into
     /// @param amount token amount of deposit
     /// @param takeFee boolean to pay a deposit fee
-    function depositToken(address token, address chest, uint256 amount, bool takeFee) external {
-        if (AccountV3Upgradable(payable(chest)).owner() != msg.sender) revert UnauthorizedUser(msg.sender);
+    function depositToken(address token, address walletAddress, uint256 amount, bool takeFee) external {
+        if (AccountV3Upgradable(payable(walletAddress)).owner() != msg.sender) revert UnauthorizedUser(msg.sender);
         uint256 fee;
 
-        if (takeFee) {
+        if (takeFee && depositFee > 0) {
             fee = amount * depositFee / feePrecision;
             IERC20(token).safeTransferFrom(msg.sender, feeReceiver, fee);
-            IERC20(token).safeTransferFrom(msg.sender, chest, amount - fee);
+            IERC20(token).safeTransferFrom(msg.sender, walletAddress, amount - fee);
 
-            depositsByAccountByToken[chest][token] += amount - fee;
+            depositsByAccountByToken[walletAddress][token] += amount - fee;
             depositsByToken[token] += amount - fee;
             feesCollectedByToken[token] += fee;
         } else {
-            IERC20(token).safeTransferFrom(msg.sender, chest, amount);
-            depositsByAccountByToken[chest][token] += amount;
+            IERC20(token).safeTransferFrom(msg.sender, walletAddress, amount);
+            depositsByAccountByToken[walletAddress][token] += amount;
             depositsByToken[token] += amount;
         }
 
-        emit Deposit(msg.sender, chest, token, amount - fee, fee);
+        emit Deposit(msg.sender, walletAddress, token, amount - fee, fee);
     }
 
     function addApprovedToken(address token) external onlyOwner {

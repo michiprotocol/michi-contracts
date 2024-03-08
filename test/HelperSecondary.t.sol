@@ -14,11 +14,11 @@ import "tokenbound/lib/multicall-authenticated/src/Multicall3.sol";
 
 import "./TestContracts/MockYT.sol";
 
-import "src/MichiChest.sol";
+import "src/MichiWalletNFT.sol";
 import {MichiHelper} from "src/MichiHelper.sol";
 
 contract HelperSecondaryTest is Test {
-    MichiChest public michiChest;
+    MichiWalletNFT public michiWalletNFT;
     MichiHelper public michiHelper;
     MockYT public mockYT;
 
@@ -32,7 +32,7 @@ contract HelperSecondaryTest is Test {
     function setUp() public {
         address feeRecipient = vm.addr(5);
 
-        michiChest = new MichiChest(0, 0);
+        michiWalletNFT = new MichiWalletNFT(0, 0);
         registry = new ERC6551Registry();
         guardian = new AccountGuardian(address(this));
         multicall = new Multicall3();
@@ -44,7 +44,7 @@ contract HelperSecondaryTest is Test {
             address(registry),
             address(upgradeableImplementation),
             address(proxy),
-            address(michiChest),
+            address(michiWalletNFT),
             feeRecipient,
             0,
             10000

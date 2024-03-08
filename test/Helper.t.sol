@@ -13,11 +13,11 @@ import "tokenbound/src/AccountGuardian.sol";
 import "tokenbound/lib/multicall-authenticated/src/Multicall3.sol";
 import "./TestContracts/MockYT.sol";
 
-import "src/MichiChest.sol";
+import "src/MichiWalletNFT.sol";
 import {MichiHelper} from "src/MichiHelper.sol";
 
 contract HelperTestFuzz is Test {
-    MichiChest public michiChest;
+    MichiWalletNFT public michiWalletNFT;
     MichiHelper public michiHelper;
     MockYT public mockYT;
 
@@ -31,7 +31,7 @@ contract HelperTestFuzz is Test {
     function setUp() public {
         address feeRecipient = vm.addr(5);
 
-        michiChest = new MichiChest(0, 0);
+        michiWalletNFT = new MichiWalletNFT(0, 0);
         registry = new ERC6551Registry();
         guardian = new AccountGuardian(address(this));
         multicall = new Multicall3();
@@ -43,29 +43,29 @@ contract HelperTestFuzz is Test {
             address(registry),
             address(upgradeableImplementation),
             address(proxy),
-            address(michiChest),
+            address(michiWalletNFT),
             feeRecipient,
             0,
             10000
         );
     }
 
-    function testCreateChest(uint256 quantity) public {
+    function testCreateWallet(uint256 quantity) public {
         vm.assume(quantity > 0);
         vm.assume(quantity < 10);
         address user1 = vm.addr(1);
-        uint256 firstIdMinted = michiChest.currentIndex();
+        uint256 firstIdMinted = michiWalletNFT.currentIndex();
 
         vm.prank(user1);
-        michiHelper.createChest(quantity);
+        michiHelper.createWallet(quantity);
 
-        uint256 nextId = michiChest.currentIndex();
+        uint256 nextId = michiWalletNFT.currentIndex();
 
         for (uint256 i = firstIdMinted; i < nextId; i++) {
             // check that nft is minted to user1
-            assertEq(michiChest.ownerOf(i), user1);
+            assertEq(michiWalletNFT.ownerOf(i), user1);
 
-            address computedAddress = registry.account(address(proxy), 0, block.chainid, address(michiChest), i);
+            address computedAddress = registry.account(address(proxy), 0, block.chainid, address(michiWalletNFT), i);
 
             // check that predicted address is owned by user1
             AccountV3 account = AccountV3(payable(computedAddress));
@@ -77,13 +77,13 @@ contract HelperTestFuzz is Test {
         vm.assume(amount < 100000 ether);
         address user1 = vm.addr(1);
         address user2 = vm.addr(2);
-        uint256 index = michiChest.currentIndex();
+        uint256 index = michiWalletNFT.currentIndex();
 
         // compute predicted address using expected id
-        address computedAddress = registry.account(address(proxy), 0, block.chainid, address(michiChest), index);
+        address computedAddress = registry.account(address(proxy), 0, block.chainid, address(michiWalletNFT), index);
 
         vm.prank(user1);
-        michiHelper.createChest(1);
+        michiHelper.createWallet(1);
 
         // mint mock YT tokens
         mockYT.mint(user1, amount);
