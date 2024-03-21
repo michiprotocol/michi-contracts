@@ -59,6 +59,9 @@ contract MichiHelper is Ownable {
         uint256 feeTaken
     );
 
+    /// @notice error returned when a user sends an invalid eth amount
+    error InvalidPayableAmount(uint256 amount);
+
     /// @notice error returned when a user tries to deposit an unauthorized token
     error UnauthorizedToken(address token);
 
@@ -109,9 +112,11 @@ contract MichiHelper is Ownable {
     /// @notice mint MichiWalletNFT, deploy 6551 wallet owned by NFT, and initialize to current implementation
     /// @param quantity number of NFTs and wallets to setup
     function createWallet(uint256 quantity) external payable {
+        uint256 mintPrice = michiWalletNFT.getMintPrice();
+        if (msg.value != mintPrice * quantity) revert InvalidPayableAmount(msg.value);
         for (uint256 i = 0; i < quantity; i++) {
             uint256 currentIndex = michiWalletNFT.getCurrentIndex();
-            michiWalletNFT.mint{value: msg.value}(msg.sender);
+            michiWalletNFT.mint{value: mintPrice}(msg.sender);
             bytes32 salt = bytes32(abi.encode(0));
             address payable newWallet = payable(
                 erc6551Registry.createAccount(erc6551Proxy, salt, block.chainid, address(michiWalletNFT), currentIndex)
@@ -130,7 +135,7 @@ contract MichiHelper is Ownable {
     function depositToken(address token, address walletAddress, uint256 amount, bool takeFee) external {
         if (AccountV3Upgradable(payable(walletAddress)).owner() != msg.sender) revert UnauthorizedUser(msg.sender);
         uint256 fee;
-
+        if (!approvedToken[token]) revert UnauthorizedToken(token);
         if (takeFee && depositFee > 0) {
             fee = amount * depositFee / feePrecision;
             IERC20(token).safeTransferFrom(msg.sender, feeReceiver, fee);
