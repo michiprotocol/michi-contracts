@@ -31,7 +31,7 @@ contract HelperTestFuzz is Test {
     function setUp() public {
         address feeRecipient = vm.addr(5);
 
-        michiWalletNFT = new MichiWalletNFT(0, 0);
+        michiWalletNFT = new MichiWalletNFT(0, 0.1 ether);
         registry = new ERC6551Registry();
         guardian = new AccountGuardian(address(this));
         multicall = new Multicall3();
@@ -54,10 +54,13 @@ contract HelperTestFuzz is Test {
         vm.assume(quantity > 0);
         vm.assume(quantity < 10);
         address user1 = vm.addr(1);
+        vm.deal(user1, 10 ether);
+
         uint256 firstIdMinted = michiWalletNFT.currentIndex();
 
+        uint256 mintCost = michiWalletNFT.getMintPrice() * quantity;
         vm.prank(user1);
-        michiHelper.createWallet(quantity);
+        michiHelper.createWallet{value: mintCost}(quantity);
 
         uint256 nextId = michiWalletNFT.currentIndex();
 
@@ -78,12 +81,13 @@ contract HelperTestFuzz is Test {
         address user1 = vm.addr(1);
         address user2 = vm.addr(2);
         uint256 index = michiWalletNFT.currentIndex();
+        vm.deal(user1, 10 ether);
 
         // compute predicted address using expected id
         address computedAddress = registry.account(address(proxy), 0, block.chainid, address(michiWalletNFT), index);
 
         vm.prank(user1);
-        michiHelper.createWallet(1);
+        michiHelper.createWallet{value: 0.1 ether}(1);
 
         // mint mock YT tokens
         mockYT.mint(user1, amount);

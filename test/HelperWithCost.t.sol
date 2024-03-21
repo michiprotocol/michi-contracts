@@ -32,7 +32,7 @@ contract HelperCostTest is Test {
     function setUp() public {
         address feeRecipient = vm.addr(5);
 
-        michiWalletNFT = new MichiWalletNFT(0, 0);
+        michiWalletNFT = new MichiWalletNFT(0, 1 ether);
         registry = new ERC6551Registry();
         guardian = new AccountGuardian(address(this));
         multicall = new Multicall3();
@@ -58,8 +58,10 @@ contract HelperCostTest is Test {
         // compute predicted address using expected id
         address computedAddress = registry.account(address(proxy), 0, block.chainid, address(michiWalletNFT), index);
 
+        vm.deal(user1, 10 ether);
+
         vm.prank(user1);
-        michiHelper.createWallet(1);
+        michiHelper.createWallet{value: 1 ether}(1);
 
         // check that #0 minted to user1
         assertEq(michiWalletNFT.ownerOf(index), user1);
@@ -77,14 +79,21 @@ contract HelperCostTest is Test {
         // compute predicted address using expected id
         address computedAddress = registry.account(address(proxy), 0, block.chainid, address(michiWalletNFT), index);
 
+        vm.deal(user1, 10 ether);
         vm.prank(user1);
-        michiHelper.createWallet(1);
+        michiHelper.createWallet{value: 1 ether}(1);
 
         // mint mock YT tokens
         mockYT.mint(user1, 10 ether);
         mockYT.mint(user2, 10 ether);
         assertEq(mockYT.balanceOf(user1), 10 ether);
         assertEq(mockYT.balanceOf(user2), 10 ether);
+
+        // user should fail to deposit token before it is approved
+        mockYT.approve(address(michiHelper), 10 ether);
+        vm.expectRevert(abi.encodeWithSelector(MichiHelper.UnauthorizedToken.selector, address(mockYT)));
+        vm.prank(user1);
+        michiHelper.depositToken(address(mockYT), computedAddress, 5 ether, true);
 
         // add test YT to approved tokens list
         michiHelper.addApprovedToken(address(mockYT));
