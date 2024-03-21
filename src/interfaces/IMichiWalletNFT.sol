@@ -4,5 +4,7 @@ pragma solidity ^0.8.13;
 interface IMichiWalletNFT {
     function getCurrentIndex() external view returns (uint256);
 
+    function getMintPrice() external view returns (uint256);
+
     function mint(address recipient) external payable;
 }

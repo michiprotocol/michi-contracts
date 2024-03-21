@@ -31,6 +31,10 @@ contract MichiWalletNFT is ERC721, Ownable {
         return currentIndex;
     }
 
+    function getMintPrice() external view returns (uint256) {
+        return mintPrice;
+    }
+
     function mint(address to) external payable {
         if (msg.value != mintPrice) revert InvalidPayableAmount(msg.value);
         _safeMint(to, currentIndex);
