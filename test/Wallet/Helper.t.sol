@@ -11,7 +11,7 @@ import "tokenbound/src/AccountProxy.sol";
 import "tokenbound/src/AccountGuardian.sol";
 
 import "tokenbound/lib/multicall-authenticated/src/Multicall3.sol";
-import "./TestContracts/MockYT.sol";
+import "../TestTokens/MockYT.sol";
 
 import "src/MichiWalletNFT.sol";
 import {MichiHelper} from "src/MichiHelper.sol";
