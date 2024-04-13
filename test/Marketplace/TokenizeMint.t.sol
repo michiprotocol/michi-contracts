@@ -256,7 +256,7 @@ contract TokenizeMintTest is Test {
         b[1] = 50000 ether;
         b[2] = 300 ether;
 
-        vm.expectRevert(abi.encodeWithSelector(MichiPointsMinter.InvalidToken.selector, address(mefp)));
+        vm.expectRevert(abi.encodeWithSelector(MichiPointsMinter.UnapprovedToken.selector, address(mefp)));
         michiPointsMinter.mintTokenizedPoints(requestor, a, b, ethfork, requestId);
     }
 

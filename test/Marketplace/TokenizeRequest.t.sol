@@ -154,7 +154,7 @@ contract TokenizeRequestTest is Test {
         // revert when creating request with approved collection
         vm.prank(user1);
         vm.expectRevert(
-            abi.encodeWithSelector(MichiTokenizeRequestor.InvalidCollection.selector, address(michiWalletNFT))
+            abi.encodeWithSelector(MichiTokenizeRequestor.UnapprovedCollection.selector, address(michiWalletNFT))
         );
         michiTokenizeRequestor.createTokenizePointsRequest(tba);
     }

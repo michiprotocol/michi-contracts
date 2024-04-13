@@ -42,7 +42,7 @@ contract MichiTokenizeRequestor is Ownable {
     mapping(address => bool) public approvedCollections;
 
     /// @notice error emitted when an unapproved nft collection is transferred
-    error InvalidCollection(address collection);
+    error UnapprovedCollection(address collection);
 
     /// @notice error returned when 6551 wallet owner is not sender
     error UnauthorizedCaller(address caller);
@@ -76,7 +76,7 @@ contract MichiTokenizeRequestor is Ownable {
         // get tba ownership nft
         (, address tokenContract, uint256 tokenId) = AccountV3Upgradable(payable(michiWalletAddress)).token();
 
-        if (!approvedCollections[tokenContract]) revert InvalidCollection(tokenContract);
+        if (!approvedCollections[tokenContract]) revert UnapprovedCollection(tokenContract);
 
         // verify nft owner is caller
         if (IERC721(tokenContract).ownerOf(tokenId) != msg.sender) revert UnauthorizedCaller(msg.sender);

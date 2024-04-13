@@ -53,7 +53,7 @@ contract MichiPointsMinter is AccessControl {
     error ArrayLengthMismatch();
 
     /// @notice error when unapproved token is inputted as parameter
-    error InvalidToken(address token);
+    error UnapprovedToken(address token);
 
     /// @notice error when 0 tokens are requested to be minted
     error InvalidAmount(uint256 amount);
@@ -101,7 +101,7 @@ contract MichiPointsMinter is AccessControl {
         if (tokensToMint.length != amounts.length) revert ArrayLengthMismatch();
 
         for (uint256 i = 0; i < tokensToMint.length; i++) {
-            if (!approvedTokenizedPoints[tokensToMint[i]]) revert InvalidToken(tokensToMint[i]);
+            if (!approvedTokenizedPoints[tokensToMint[i]]) revert UnapprovedToken(tokensToMint[i]);
             if (amounts[i] == 0) revert InvalidAmount(amounts[i]);
 
             if (tokenizeFee == 0) {
