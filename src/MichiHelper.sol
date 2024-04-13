@@ -210,7 +210,7 @@ contract MichiHelper is Ownable {
     }
 
     /// @dev update to new erc-6551 proxy address
-    /// @param newImplementation instance of new ERC-6551 proxy
+    /// @param newProxy instance of new ERC-6551 proxy
     function updateProxy(address newProxy) external onlyOwner {
         erc6551Proxy = newProxy;
     }

@@ -72,7 +72,7 @@ contract MichiPointsMinter is AccessControl {
         address receier, address[] tokenizedPoints, uint256 chainId, uint256 requestId, uint256[] amounts
     );
 
-    /// @dev constructor for MichiPointsMinter contract
+    /// @dev Constructor for MichiPointsMinter contract
     /// @param feeReceiver_ address of the fee receiver
     /// @param tokenizeFee_ tokenize fee
     /// @param precision_ precision denominator

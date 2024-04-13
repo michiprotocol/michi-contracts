@@ -33,7 +33,7 @@ contract MichiTBALocker is AccessControl {
     event NFTWithdrawn(address indexed recipient, address indexed collection, uint256 indexed tokenId);
 
     /// @dev Constructor for MichiPointsMinter contract
-    constructor() public {
+    constructor() {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(EXECUTOR_ROLE, msg.sender);
     }
