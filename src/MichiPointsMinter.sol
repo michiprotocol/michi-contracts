@@ -58,6 +58,9 @@ contract MichiPointsMinter is AccessControl {
     /// @notice error when 0 tokens are requested to be minted
     error InvalidAmount(uint256 amount);
 
+    /// @notice error when request can already been fulfilled
+    error RequestAlreadyFulfilled(uint256 chainId, uint256 requestId);
+
     /// @notice error when tokenize fee is set too high
     error InvalidTokenizeFee(uint256 tokenizeFee);
 
@@ -118,8 +121,15 @@ contract MichiPointsMinter is AccessControl {
                 feesByTokenizedPoint[tokensToMint[i]] += fee;
             }
         }
+        FulfilledRequest storage fulfilledRequest = chainToRequestId[chainId][requestId];
+        if (fulfilledRequest.requestId != 0) revert RequestAlreadyFulfilled(chainId, requestId);
 
-        chainToRequestId[chainId][requestId] = FulfilledRequest(receiver, tokensToMint, chainId, requestId, amounts);
+        fulfilledRequest.receiver = receiver;
+        fulfilledRequest.tokenizedPointsAddresses = tokensToMint;
+        fulfilledRequest.chainId = chainId;
+        fulfilledRequest.requestId = requestId;
+        fulfilledRequest.amounts = amounts;
+
         fulfilledRequestsByChain[chainId].push(requestId);
 
         emit RequestFulfilled(receiver, tokensToMint, chainId, requestId, amounts);
