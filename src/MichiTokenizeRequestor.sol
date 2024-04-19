@@ -53,6 +53,9 @@ contract MichiTokenizeRequestor is Ownable {
     /// @notice error returned when removing an unapproved collection
     error CollectionNotApproved(address collection);
 
+    /// @notice error returned when new TBA locker address is same as current or zero address
+    error InvalidTBALockerAddress(address tbaLockerAddress);
+
     /// @notice event emitted when a new tokenize request is created
     event NewTokenizeRequest(address indexed requester, address indexed michiWallet, uint256 indexed requestId);
 
@@ -61,6 +64,9 @@ contract MichiTokenizeRequestor is Ownable {
 
     /// @notice event emitted when a collection has been removed
     event CollectionRemoved(address indexed collection);
+
+    /// @notice event emitted when a new TBA Locker address has been set
+    event NewTBALockerAddressSet(address indexed newTBALockerAddress);
 
     /// @dev Constructor for MichiTokenizeRequestor contract
     /// @param michiTBALocker_ address of the MichiTBALocker
@@ -116,6 +122,11 @@ contract MichiTokenizeRequestor is Ownable {
     /// @dev Set a new MichiTBALocker address
     /// @param newMichiTBALockerAddress address of the new MichiTBALocker
     function setMichiTBALockerAddress(address newMichiTBALockerAddress) external onlyOwner {
+        if (newMichiTBALockerAddress == address(0) || newMichiTBALockerAddress == michiTBALocker) {
+            revert InvalidTBALockerAddress(newMichiTBALockerAddress);
+        }
         michiTBALocker = newMichiTBALockerAddress;
+
+        emit NewTBALockerAddressSet(newMichiTBALockerAddress);
     }
 }

@@ -104,6 +104,24 @@ contract TokenizeRequestTest is Test {
         assertEq(requestId, 1);
     }
 
+    function testSetNewTBALocker() public {
+        address currentTBALockerAddress = vm.addr(6);
+        address newTBALockerAddress = vm.addr(10);
+
+        // should revert when zero address
+        vm.expectRevert(abi.encodeWithSelector(MichiTokenizeRequestor.InvalidTBALockerAddress.selector, address(0)));
+        michiTokenizeRequestor.setMichiTBALockerAddress(address(0));
+
+        // should revert when setting inputting current address
+        vm.expectRevert(
+            abi.encodeWithSelector(MichiTokenizeRequestor.InvalidTBALockerAddress.selector, currentTBALockerAddress)
+        );
+        michiTokenizeRequestor.setMichiTBALockerAddress(currentTBALockerAddress);
+
+        // should pass when inputting correct address
+        michiTokenizeRequestor.setMichiTBALockerAddress(newTBALockerAddress);
+    }
+
     function testRevertUnownedWallet() public {
         // user 1 create wallet
         address user1 = vm.addr(1);
