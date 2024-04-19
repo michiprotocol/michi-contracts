@@ -39,7 +39,7 @@ contract MichiTokenizeRequestor is Ownable {
     mapping(uint256 => Request) public idToRequest;
 
     /// @notice mapping of approved Michi Wallet collections
-    mapping(address => bool) public approvedCollections;
+    mapping(address => bool) public isCollectionApproved;
 
     /// @notice error emitted when an unapproved nft collection is transferred
     error UnapprovedCollection(address collection);
@@ -76,7 +76,7 @@ contract MichiTokenizeRequestor is Ownable {
         // get tba ownership nft
         (, address tokenContract, uint256 tokenId) = AccountV3Upgradable(payable(michiWalletAddress)).token();
 
-        if (!approvedCollections[tokenContract]) revert UnapprovedCollection(tokenContract);
+        if (!isCollectionApproved[tokenContract]) revert UnapprovedCollection(tokenContract);
 
         // verify nft owner is caller
         if (IERC721(tokenContract).ownerOf(tokenId) != msg.sender) revert UnauthorizedCaller(msg.sender);
@@ -98,8 +98,8 @@ contract MichiTokenizeRequestor is Ownable {
     /// @dev Add new collection
     /// @param newCollection address of the new collection
     function addApprovedCollection(address newCollection) external onlyOwner {
-        if (approvedCollections[newCollection]) revert CollectionAlreadyApproved(newCollection);
-        approvedCollections[newCollection] = true;
+        if (isCollectionApproved[newCollection]) revert CollectionAlreadyApproved(newCollection);
+        isCollectionApproved[newCollection] = true;
 
         emit CollectionApproved(newCollection);
     }
@@ -107,8 +107,8 @@ contract MichiTokenizeRequestor is Ownable {
     /// @dev Remove an approved collection
     /// @param collectionToRemove address of the collection to remove
     function removeApprovedCollection(address collectionToRemove) external onlyOwner {
-        if (!approvedCollections[collectionToRemove]) revert CollectionNotApproved(collectionToRemove);
-        approvedCollections[collectionToRemove] = false;
+        if (!isCollectionApproved[collectionToRemove]) revert CollectionNotApproved(collectionToRemove);
+        isCollectionApproved[collectionToRemove] = false;
 
         emit CollectionRemoved(collectionToRemove);
     }
