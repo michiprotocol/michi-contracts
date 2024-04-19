@@ -21,10 +21,10 @@ contract MichiWalletReceiptNFT is ERC721, AccessControl {
     }
 
     function mint(address to, uint256 tokenId) external onlyRole(MINTER_ROLE) {
+        totalSupply++;
         _safeMint(to, tokenId);
 
         emit Mint(to, tokenId);
-        totalSupply++;
     }
 
     function grantMinterRole(address user) external onlyRole(DEFAULT_ADMIN_ROLE) {
