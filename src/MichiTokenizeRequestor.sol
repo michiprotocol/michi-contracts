@@ -84,13 +84,13 @@ contract MichiTokenizeRequestor is Ownable {
         // transfer in michi wallet nft
         IERC721(tokenContract).safeTransferFrom(msg.sender, michiTBALocker, tokenId);
 
-        // mint the user a receipt NFT of same index
-        // in case other projects (such as AVSs) airdrop tokens to YT holders
-        michiWalletReceiptNFT.mint(msg.sender, tokenId);
-
         _requestIds.increment();
         uint256 newRequestId = _requestIds.current();
         idToRequest[newRequestId] = Request(msg.sender, michiWalletAddress, newRequestId);
+
+        // mint the user a receipt NFT of same index
+        // in case other projects (such as AVSs) airdrop tokens to previous EL points earners
+        michiWalletReceiptNFT.mint(msg.sender, tokenId);
 
         emit NewTokenizeRequest(msg.sender, michiWalletAddress, newRequestId);
     }
