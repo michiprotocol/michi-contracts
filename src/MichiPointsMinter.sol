@@ -102,6 +102,8 @@ contract MichiPointsMinter is AccessControl {
         uint256 requestId
     ) external onlyRole(MINTER_ROLE) {
         if (tokensToMint.length != amounts.length) revert ArrayLengthMismatch();
+        FulfilledRequest storage fulfilledRequest = chainToRequestId[chainId][requestId];
+        if (fulfilledRequest.requestId != 0) revert RequestAlreadyFulfilled(chainId, requestId);
 
         for (uint256 i = 0; i < tokensToMint.length; i++) {
             if (!approvedTokenizedPoints[tokensToMint[i]]) revert UnapprovedToken(tokensToMint[i]);
@@ -121,8 +123,6 @@ contract MichiPointsMinter is AccessControl {
                 feesByTokenizedPoint[tokensToMint[i]] += fee;
             }
         }
-        FulfilledRequest storage fulfilledRequest = chainToRequestId[chainId][requestId];
-        if (fulfilledRequest.requestId != 0) revert RequestAlreadyFulfilled(chainId, requestId);
 
         fulfilledRequest.receiver = receiver;
         fulfilledRequest.tokenizedPointsAddresses = tokensToMint;
