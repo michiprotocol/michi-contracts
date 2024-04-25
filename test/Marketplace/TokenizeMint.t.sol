@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.13;
 
+import "forge-std/console.sol";
+
 import "forge-std/Test.sol";
 
 import "erc6551/ERC6551Registry.sol";
@@ -173,6 +175,65 @@ contract TokenizeMintTest is Test {
 
         assertEq(melp.balanceOf(requestor), userMelpBalanceExpected);
         assertEq(mes.balanceOf(requestor), userMesBalanceExpected);
+        assertEq(mefp.balanceOf(requestor), userMefpBalanceExpected);
+    }
+
+    function testUpdateMintRequest() public {
+        vm.selectFork(ethfork);
+        // create wallet
+        address user1 = vm.addr(1);
+        uint256 index = michiWalletNFT.currentIndex();
+
+        vm.prank(user1);
+        michiHelper.createWallet(1);
+        assertEq(michiWalletNFT.ownerOf(index), user1);
+
+        // give approval and compute tba
+        vm.prank(user1);
+        michiWalletNFT.setApprovalForAll(address(michiTokenizeRequestor), true);
+
+        address tba = registry.account(address(proxy), 0, block.chainid, address(michiWalletNFT), index);
+
+        // create request
+        vm.prank(user1);
+        michiTokenizeRequestor.createTokenizePointsRequest(tba);
+
+        // check that tba locker owns MichiWalletNFT
+        assertEq(michiWalletNFT.ownerOf(index), michiTBALocker);
+
+        // check that user1 is minted MichiWalletReceiptNFT of same index
+        assertEq(michiWalletReceiptNFT.ownerOf(index), user1);
+
+        // retrieve request struct
+        (address requestor, address michiWalletAddress, uint256 requestId) = michiTokenizeRequestor.idToRequest(1);
+        assertEq(requestor, user1);
+        assertEq(michiWalletAddress, tba);
+        assertEq(requestId, 1);
+
+        // for testing purposes, user 1's michi wallet has 10000 eigenlayer points, 50000 ethena sats, and 300 etherfi points
+
+        // on base, execute tokenized points mint
+        vm.selectFork(basefork);
+        uint256 tokenizeFee = michiPointsMinter.tokenizeFee();
+        uint256 precision = michiPointsMinter.precision();
+
+        address[] memory a = new address[](2);
+        a[0] = address(melp);
+        a[1] = address(mes);
+
+        uint256[] memory b = new uint256[](2);
+        b[0] = 10000 ether;
+        b[1] = 50000 ether;
+
+        michiPointsMinter.mintTokenizedPoints(requestor, a, b, ethfork, requestId);
+
+        // update request to mint mefp points
+        michiPointsMinter.updateTokenizeRequest(address(mefp), 300 ether, ethfork, requestId);
+
+        uint256 mefpFeeExpected = 300 ether * tokenizeFee / precision;
+        uint256 userMefpBalanceExpected = 300 ether - mefpFeeExpected;
+        assertEq(michiPointsMinter.feesByTokenizedPoint(address(mefp)), mefpFeeExpected);
+        assertEq(mefp.balanceOf(feeRecipient), mefpFeeExpected);
         assertEq(mefp.balanceOf(requestor), userMefpBalanceExpected);
     }
 

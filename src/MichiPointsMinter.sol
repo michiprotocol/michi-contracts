@@ -61,6 +61,9 @@ contract MichiPointsMinter is AccessControl {
     /// @notice error when request can already been fulfilled
     error RequestAlreadyFulfilled(uint256 chainId, uint256 requestId);
 
+    /// @notice error when tokenized point mint fails
+    error RequestNotFound(uint256 chainId, uint256 requestId);
+
     /// @notice error when tokenize fee is set too high
     error InvalidTokenizeFee(uint256 tokenizeFee);
 
@@ -72,8 +75,11 @@ contract MichiPointsMinter is AccessControl {
 
     /// @notice event when a tokenize point request has been completed
     event RequestFulfilled(
-        address receier, address[] tokenizedPoints, uint256 chainId, uint256 requestId, uint256[] amounts
+        address receiver, address[] tokenizedPoints, uint256 chainId, uint256 requestId, uint256[] amounts
     );
+
+    /// @notice event when a tokenize point request has been updated
+    event RequestUpdated(address receiver, address tokenizedPoint, uint256 chainId, uint256 requestId, uint256 amount);
 
     /// @dev Constructor for MichiPointsMinter contract
     /// @param feeReceiver_ address of the fee receiver
@@ -133,6 +139,41 @@ contract MichiPointsMinter is AccessControl {
         fulfilledRequestsByChain[chainId].push(requestId);
 
         emit RequestFulfilled(receiver, tokensToMint, chainId, requestId, amounts);
+    }
+
+    /// @dev Update request to mint additional tokens
+    /// @dev Used when an API is down and points balance cannot be retrieved for some tokens
+    /// @param tokenToMint token to mint
+    /// @param amount amount to mint
+    /// @param chainId chainid where request was made
+    /// @param requestId id of request
+    function updateTokenizeRequest(address tokenToMint, uint256 amount, uint256 chainId, uint256 requestId)
+        external
+        onlyRole(MINTER_ROLE)
+    {
+        FulfilledRequest storage fulfilledRequest = chainToRequestId[chainId][requestId];
+        if (fulfilledRequest.requestId != requestId) revert RequestNotFound(chainId, requestId);
+        if (!approvedTokenizedPoints[tokenToMint]) revert UnapprovedToken(tokenToMint);
+        if (amount == 0) revert InvalidAmount(amount);
+
+        if (tokenizeFee == 0) {
+            ITokenizedPointERC20(tokenToMint).mint(fulfilledRequest.receiver, amount);
+            userAmountMintedByTokenizedPoint[tokenToMint] += amount;
+        } else {
+            uint256 fee = amount * tokenizeFee / precision;
+            uint256 amountAfterFees = amount - fee;
+
+            ITokenizedPointERC20(tokenToMint).mint(fulfilledRequest.receiver, amountAfterFees);
+            ITokenizedPointERC20(tokenToMint).mint(feeReceiver, fee);
+
+            userAmountMintedByTokenizedPoint[tokenToMint] += amountAfterFees;
+            feesByTokenizedPoint[tokenToMint] += fee;
+        }
+
+        fulfilledRequest.tokenizedPointsAddresses.push(tokenToMint);
+        fulfilledRequest.amounts.push(amount);
+
+        emit RequestUpdated(fulfilledRequest.receiver, tokenToMint, chainId, requestId, amount);
     }
 
     /// @dev Grant minter role
