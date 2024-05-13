@@ -10,6 +10,11 @@ import "tokenbound/src/AccountProxy.sol";
 
 import "./interfaces/IMichiWalletNFT.sol";
 
+/**
+ * @title MichiHelper
+ *     @dev Implementation of a helper contract to create ERC-6551 accounts (TBAs)
+ *     and deposit approved tokens to the TBA
+ */
 contract MichiHelper is Ownable {
     using SafeERC20 for IERC20;
 
@@ -28,8 +33,10 @@ contract MichiHelper is Ownable {
     /// @notice address that receives fees (if applicable)
     address public feeReceiver;
 
+    /// @notice deposit fee
     uint256 public depositFee;
 
+    /// @notice precision denominator
     uint256 public feePrecision;
 
     /// @notice tracks total deposits indexed by user and token
@@ -83,7 +90,7 @@ contract MichiHelper is Ownable {
     /// @notice error returned when attempting to remove an unapproved token
     error TokenNotApproved(address token);
 
-    /// @notice constructor for MichiHelper contract
+    /// @dev constructor for MichiHelper contract
     /// @param erc6551Registry_ address of 6551 registry
     /// @param erc6551Implementation_ address of current 6551 implementation
     /// @param erc6551Proxy_ address of current 6551 proxy
@@ -109,7 +116,7 @@ contract MichiHelper is Ownable {
         feePrecision = feePrecision_;
     }
 
-    /// @notice mint MichiWalletNFT, deploy 6551 wallet owned by NFT, and initialize to current implementation
+    /// @dev mint MichiWalletNFT, deploy 6551 wallet owned by NFT, and initialize to current implementation
     /// @param quantity number of NFTs and wallets to setup
     function createWallet(uint256 quantity) external payable {
         uint256 mintPrice = michiWalletNFT.getMintPrice();
@@ -127,7 +134,7 @@ contract MichiHelper is Ownable {
         }
     }
 
-    /// @notice deposit a supported token into EERC-6551 wallet
+    /// @dev deposit a supported token into ERC-6551 wallet
     /// @param token address of supported token to deposit
     /// @param walletAddress address of wallet to deposit into
     /// @param amount token amount of deposit
@@ -153,12 +160,16 @@ contract MichiHelper is Ownable {
         emit Deposit(msg.sender, walletAddress, token, amount - fee, fee);
     }
 
+    /// @dev add a supported token
+    /// @param token address of new approved token
     function addApprovedToken(address token) external onlyOwner {
         if (approvedToken[token]) revert TokenAlreadyApproved(token);
         approvedToken[token] = true;
         listApprovedTokens.push(token);
     }
 
+    /// @dev remove a supported token
+    /// @param token address of token to be removed
     function removeApprovedToken(address token) external onlyOwner {
         if (!approvedToken[token]) revert TokenNotApproved(token);
         approvedToken[token] = false;
@@ -172,24 +183,34 @@ contract MichiHelper is Ownable {
         }
     }
 
+    /// @dev retrieve an array of approved tokens
     function getApprovedTokens() external view returns (address[] memory) {
         return listApprovedTokens;
     }
 
+    /// @dev set a new deposit fee
+    /// @param newDepositFee new deposit fee
+    /// must be under 500 (500/10000 = 5%)
     function setDepositFee(uint256 newDepositFee) external onlyOwner {
         if (newDepositFee > 500) revert InvalidDepositFee(newDepositFee);
         depositFee = newDepositFee;
     }
 
+    /// @dev set a new address to receive fees
+    /// @param newFeeReceiver new address to receive fees
     function setFeeReceiver(address newFeeReceiver) external onlyOwner {
         if (newFeeReceiver == address(0)) revert InvalidFeeReceiver(newFeeReceiver);
         feeReceiver = newFeeReceiver;
     }
 
+    /// @dev update to new erc-6551 implementation address
+    /// @param newImplementation instance of new ERC-6551 implementation
     function updateImplementation(address newImplementation) external onlyOwner {
         erc6551Implementation = newImplementation;
     }
 
+    /// @dev update to new erc-6551 proxy address
+    /// @param newProxy instance of new ERC-6551 proxy
     function updateProxy(address newProxy) external onlyOwner {
         erc6551Proxy = newProxy;
     }
