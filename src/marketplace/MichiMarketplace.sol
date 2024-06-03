@@ -28,19 +28,24 @@ contract MichiMarketplace is IMichiMarketplace, Ownable {
 
     mapping(address => bool) public isCurrencyAccepted;
 
+    mapping(address => bool) public isCollectionAccepted;
+
     address[] public listAcceptedCurrencies;
 
-    constructor(address weth_, uint256 marketplaceFee_, uint256 precision_) public {
+    address[] public listAcceptedCollections;
+
+    constructor(address weth_, address marketplaceFeeRecipient_, uint256 marketplaceFee_, uint256 precision_) {
         domainSeparator = keccak256(
             abi.encode(
                 keccak256("EIP712Domain(string name,string version,uint256 chainId, address verifyingContract)"),
                 keccak256("MichiMarketplace"),
-                keccak256(bytes("2")),
+                keccak256(bytes("1")),
                 block.chainid,
                 address(this)
             )
         );
         weth = weth_;
+        marketplaceFeeRecipient = marketplaceFeeRecipient_;
         marketplaceFee = marketplaceFee_;
         precision = precision_;
     }
@@ -67,6 +72,7 @@ contract MichiMarketplace is IMichiMarketplace, Ownable {
 
     function executeListingETH(Listing calldata listing) external payable override {
         if (!isCurrencyAccepted[listing.order.currency]) revert CurrencyNotAccepted();
+        if (!isCollectionAccepted[listing.order.collection]) revert CollectionNotAccepted();
         if (listing.order.currency != weth) revert CurrencyMismatch();
         if (msg.sender == listing.seller) revert OrderCreatorCannotExecute();
 
@@ -89,6 +95,7 @@ contract MichiMarketplace is IMichiMarketplace, Ownable {
 
     function executeListing(Listing calldata listing) external override {
         if (!isCurrencyAccepted[listing.order.currency]) revert CurrencyNotAccepted();
+        if (!isCollectionAccepted[listing.order.collection]) revert CollectionNotAccepted();
         if (msg.sender == listing.seller) revert OrderCreatorCannotExecute();
 
         _validateListing(listing);
@@ -110,6 +117,7 @@ contract MichiMarketplace is IMichiMarketplace, Ownable {
 
     function acceptOffer(Offer calldata offer) external override {
         if (!isCurrencyAccepted[offer.order.currency]) revert CurrencyNotAccepted();
+        if (!isCollectionAccepted[offer.order.collection]) revert CollectionNotAccepted();
         if (msg.sender == offer.buyer) revert OrderCreatorCannotExecute();
 
         _validateOffer(offer);
@@ -135,6 +143,13 @@ contract MichiMarketplace is IMichiMarketplace, Ownable {
         emit NewMarketplaceFee(newFee);
     }
 
+    function setMarketplaceFeeRecipient(address newFeeRecipient) external onlyOwner {
+        if (newFeeRecipient == address(0) || newFeeRecipient == marketplaceFeeRecipient) revert InvalidAddress();
+        marketplaceFeeRecipient = newFeeRecipient;
+
+        emit NewMarketplaceFeeRecipient(newFeeRecipient);
+    }
+
     function getListAcceptedCurrencies() public view returns (address[] memory) {
         return listAcceptedCurrencies;
     }
@@ -155,6 +170,27 @@ contract MichiMarketplace is IMichiMarketplace, Ownable {
             if (listAcceptedCurrencies[i] == currencyToRemove) {
                 listAcceptedCurrencies[i] = listAcceptedCurrencies[arrayLength - 1];
                 listAcceptedCurrencies.pop();
+                break;
+            }
+        }
+    }
+
+    function addAcceptedCollection(address newCollection) external onlyOwner {
+        if (isCollectionAccepted[newCollection]) revert CollectionAlreadyAccepted();
+        isCollectionAccepted[newCollection] = true;
+        listAcceptedCollections.push(newCollection);
+
+        emit NewCollectionAccepted(newCollection);
+    }
+
+    function removeAcceptedCollection(address collectionToRemove) external onlyOwner {
+        if (!isCollectionAccepted[collectionToRemove]) revert CollectionNotAccepted();
+        isCollectionAccepted[collectionToRemove] = false;
+        uint256 arrayLength = listAcceptedCollections.length;
+        for (uint256 i = 0; i < arrayLength; i++) {
+            if (listAcceptedCollections[i] == collectionToRemove) {
+                listAcceptedCollections[i] = listAcceptedCollections[arrayLength - 1];
+                listAcceptedCollections.pop();
                 break;
             }
         }

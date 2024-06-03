@@ -2,11 +2,11 @@
 pragma solidity ^0.8.13;
 
 bytes32 constant LISTING_ORDER_HASH = keccak256(
-    "Listing(address seller,address collection,address currency,uint256 tokenId,uint256 amount, uint256 orderExpiry)"
+    "Listing(address seller,address collection,address currency,uint256 tokenId,uint256 amount,uint256 expiry,uint256 nonce)"
 );
 
 bytes32 constant OFFER_ORDER_HASH = keccak256(
-    "Offer(address buyer,address collection,address currency,uint256 tokenId,uint256 amount, uint256 orderExpiry)"
+    "Offer(address buyer,address collection,address currency,uint256 tokenId,uint256 amount,uint256 expiry,uint256 nonce)"
 );
 
 struct Order {

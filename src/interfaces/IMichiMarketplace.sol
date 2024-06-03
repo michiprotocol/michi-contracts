@@ -28,7 +28,13 @@ interface IMichiMarketplace {
 
     error CurrencyNotAccepted();
 
+    error CollectionAlreadyAccepted();
+
+    error CollectionNotAccepted();
+
     error InvalidFee();
+
+    error InvalidAddress();
 
     event OrdersCancelled(address user, uint256[] orderNonces);
 
@@ -46,7 +52,11 @@ interface IMichiMarketplace {
 
     event NewMarketplaceFee(uint256 indexed newMarketplaceFee);
 
+    event NewMarketplaceFeeRecipient(address indexed newFeeRecipient);
+
     event NewCurrencyAccepted(address indexed newCurrency);
+
+    event NewCollectionAccepted(address indexed newCollection);
 
     function cancelAllOrdersForCaller(uint256 minNonce) external;
 
@@ -57,4 +67,8 @@ interface IMichiMarketplace {
     function executeListing(Listing calldata listing) external;
 
     function acceptOffer(Offer calldata offer) external;
+
+    function setMarketplaceFee(uint256 newFee) external;
+
+    function setMarketplaceFeeRecipient(address newFeeRecipient) external;
 }
