@@ -8,13 +8,13 @@ import "../TestContracts/WETH.sol";
 import "../TestContracts/MockUSDT.sol";
 import "../libraries/SignatureUtils.sol";
 
-import "src/marketplace/MichiMarketplace.sol";
+import "src/marketplace/PichiMarketplace.sol";
 import "src/MichiWalletNFT.sol";
 import {Order, Listing, Offer} from "src/libraries/OrderTypes.sol";
 import "src/libraries/SignatureAuthentication.sol";
 
 contract MarketplaceTest is Test {
-    MichiMarketplace public marketplace;
+    PichiMarketplace public marketplace;
     MichiWalletNFT public michiWalletNFT;
     WETH public weth;
     MockUSDT public usdt;
@@ -53,7 +53,7 @@ contract MarketplaceTest is Test {
         weth = new WETH();
         usdt = new MockUSDT();
         michiWalletNFT = new MichiWalletNFT(0, 0);
-        marketplace = new MichiMarketplace(address(weth), feeReceiver, 100, 10000);
+        marketplace = new PichiMarketplace(address(weth), feeReceiver, 100, 10000);
         sigUtils = new SignatureUtils(marketplace.domainSeparator());
 
         marketplace.addAcceptedCurrency(address(weth));
@@ -141,7 +141,7 @@ contract MarketplaceTest is Test {
         vm.deal(user3, 100 ether);
 
         vm.prank(user3);
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.InvalidOrder.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidOrder.selector));
         marketplace.executeListing{value: wethListing.amount}(signedListing);
     }
 
@@ -299,7 +299,7 @@ contract MarketplaceTest is Test {
 
         // user2 cannot execute listing
         vm.prank(user2);
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.InvalidOrder.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidOrder.selector));
         marketplace.executeListing{value: wethListing.amount}(signedListing);
     }
 
@@ -375,11 +375,11 @@ contract MarketplaceTest is Test {
 
         // user2 cannot execute either listing
         vm.prank(user2);
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.InvalidOrder.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidOrder.selector));
         marketplace.executeListing{value: wethListing1.amount}(signedListing1);
 
         vm.prank(user2);
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.InvalidOrder.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidOrder.selector));
         marketplace.executeListing{value: wethListing2.amount}(signedListing2);
     }
 
@@ -430,7 +430,7 @@ contract MarketplaceTest is Test {
         michiWalletNFT.setApprovalForAll(address(marketplace), true);
 
         vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.InvalidOrder.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidOrder.selector));
         marketplace.acceptOffer(signedOffer);
     }
 
@@ -510,11 +510,11 @@ contract MarketplaceTest is Test {
         michiWalletNFT.setApprovalForAll(address(marketplace), true);
 
         vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.InvalidOrder.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidOrder.selector));
         marketplace.acceptOffer(signedOffer1);
 
         vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.InvalidOrder.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidOrder.selector));
         marketplace.acceptOffer(signedOffer2);
     }
 
@@ -562,7 +562,7 @@ contract MarketplaceTest is Test {
         michiWalletNFT.setApprovalForAll(address(marketplace), true);
 
         vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.CurrencyNotAccepted.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.CurrencyNotAccepted.selector));
         marketplace.acceptOffer(signedOffer);
     }
 
@@ -610,7 +610,7 @@ contract MarketplaceTest is Test {
         michiWalletNFT.setApprovalForAll(address(marketplace), true);
 
         vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.CollectionNotAccepted.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.CollectionNotAccepted.selector));
         marketplace.acceptOffer(signedOffer);
     }
 
@@ -622,7 +622,7 @@ contract MarketplaceTest is Test {
 
         // user1 tries to cancel orders 1 and 2 again
         vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.NonceLowerThanCurrent.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.NonceLowerThanCurrent.selector));
         marketplace.cancelAllOrdersForCaller(2);
 
         // user1 cancels order 3
@@ -633,7 +633,7 @@ contract MarketplaceTest is Test {
 
         // user1 tries to cancel order 3 again
         vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.OrderAlreadyCancelled.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.OrderAlreadyCancelled.selector));
         marketplace.cancelOrdersForCaller(a);
     }
 
@@ -678,7 +678,7 @@ contract MarketplaceTest is Test {
 
         // user2 purchases listing
         vm.prank(user2);
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.SellerNotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.SellerNotOwner.selector));
         marketplace.executeListing{value: wethListing.amount}(signedListing);
     }
 
@@ -722,7 +722,7 @@ contract MarketplaceTest is Test {
 
         // user2 purchases listing
         vm.prank(user2);
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.OrderExpired.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.OrderExpired.selector));
         marketplace.executeListing{value: wethListing.amount}(signedListing);
     }
 
@@ -763,7 +763,7 @@ contract MarketplaceTest is Test {
 
         // user tries to execute usdt listing with executeListingETH
         vm.prank(user2);
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.CurrencyMismatch.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.CurrencyMismatch.selector));
         marketplace.executeListing{value: usdtListing.amount}(signedListing);
     }
 
@@ -804,7 +804,7 @@ contract MarketplaceTest is Test {
 
         // user2 tries to purchase listing with wrong msg.value
         vm.prank(user2);
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.PaymentMismatch.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.PaymentMismatch.selector));
         marketplace.executeListing{value: wethListing.amount / 2}(signedListing);
     }
 
@@ -845,21 +845,21 @@ contract MarketplaceTest is Test {
 
         // user2 tries to purchase listing with wrong parameters
         vm.prank(user2);
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.SignatureInvalid.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.SignatureInvalid.selector));
         marketplace.executeListing{value: wethListing.amount * 2}(signedListing);
     }
 
     function testInvalidAddress() public {
         // try setting fee recipient to zero address
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.InvalidAddress.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidAddress.selector));
         marketplace.setMarketplaceFeeRecipient(address(0));
 
         // try setting fee recipient to current fee receiver
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.InvalidAddress.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidAddress.selector));
         marketplace.setMarketplaceFeeRecipient(feeReceiver);
 
         // try adding zero address to accepted currencies
-        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.InvalidAddress.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidAddress.selector));
         marketplace.addAcceptedCurrency(address(0));
     }
 }

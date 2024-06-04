@@ -5,11 +5,14 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../interfaces/IMichiMarketplace.sol";
+import "../interfaces/IPichiMarketplace.sol";
 import "../libraries/SignatureAuthentication.sol";
 import {Order, Listing, Offer} from "../libraries/OrderTypes.sol";
 
-contract MichiMarketplace is IMichiMarketplace, Ownable {
+/// @title PichiMarketplace
+/// @dev NFT Marketplace for trading of ERC-6551 Accounts
+/// @dev from Pichi Finance
+contract PichiMarketplace is IPichiMarketplace, Ownable {
     using SafeERC20 for IERC20;
 
     bytes32 public domainSeparator;
@@ -40,7 +43,7 @@ contract MichiMarketplace is IMichiMarketplace, Ownable {
         domainSeparator = keccak256(
             abi.encode(
                 keccak256("EIP712Domain(string name,string version,uint256 chainId, address verifyingContract)"),
-                keccak256("MichiMarketplace"),
+                keccak256("PichiMarketplace"),
                 keccak256(bytes("1")),
                 block.chainid,
                 address(this)

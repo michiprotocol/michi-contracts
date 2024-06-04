@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import {Listing, Offer} from "../libraries/OrderTypes.sol";
 
-interface IMichiMarketplace {
+interface IPichiMarketplace {
     error NonceLowerThanCurrent();
 
     error ArrayEmpty();
