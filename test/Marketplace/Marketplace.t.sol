@@ -50,7 +50,6 @@ contract MarketplaceTest is Test {
 
     function setUp() public {
         feeReceiver = vm.addr(10);
-
         weth = new WETH();
         usdt = new MockUSDT();
         michiWalletNFT = new MichiWalletNFT(0, 0);
@@ -126,7 +125,7 @@ contract MarketplaceTest is Test {
 
         // user2 purchases listing
         vm.prank(user2);
-        marketplace.executeListingETH{value: wethListing.amount}(signedListing);
+        marketplace.executeListing{value: wethListing.amount}(signedListing);
 
         //verify that payment, fees, and NFT are transferred correctly
         assertEq(user1.balance, sellerBalance + paymentAmountAfterFees);
@@ -143,7 +142,7 @@ contract MarketplaceTest is Test {
 
         vm.prank(user3);
         vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.InvalidOrder.selector));
-        marketplace.executeListingETH{value: wethListing.amount}(signedListing);
+        marketplace.executeListing{value: wethListing.amount}(signedListing);
     }
 
     function testExecuteListingERC20() public {
@@ -193,7 +192,7 @@ contract MarketplaceTest is Test {
         usdt.approve(address(marketplace), usdtListing.amount);
         // user2 purchases listing
         vm.prank(user2);
-        marketplace.executeListing(signedListing);
+        marketplace.executeListing{value: 0}(signedListing);
 
         //verify that payment, fees, and NFT are transferred correctly
         assertEq(usdt.balanceOf(user1), sellerUSDTBalance + paymentAmountAfterFees);
@@ -301,7 +300,7 @@ contract MarketplaceTest is Test {
         // user2 cannot execute listing
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.InvalidOrder.selector));
-        marketplace.executeListingETH{value: wethListing.amount}(signedListing);
+        marketplace.executeListing{value: wethListing.amount}(signedListing);
     }
 
     function testCancelMultipleListings() public {
@@ -377,11 +376,11 @@ contract MarketplaceTest is Test {
         // user2 cannot execute either listing
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.InvalidOrder.selector));
-        marketplace.executeListingETH{value: wethListing1.amount}(signedListing1);
+        marketplace.executeListing{value: wethListing1.amount}(signedListing1);
 
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.InvalidOrder.selector));
-        marketplace.executeListingETH{value: wethListing2.amount}(signedListing2);
+        marketplace.executeListing{value: wethListing2.amount}(signedListing2);
     }
 
     function testCancelOffer() public {
@@ -680,7 +679,7 @@ contract MarketplaceTest is Test {
         // user2 purchases listing
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.SellerNotOwner.selector));
-        marketplace.executeListingETH{value: wethListing.amount}(signedListing);
+        marketplace.executeListing{value: wethListing.amount}(signedListing);
     }
 
     function testOrderExpired() public {
@@ -724,7 +723,7 @@ contract MarketplaceTest is Test {
         // user2 purchases listing
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.OrderExpired.selector));
-        marketplace.executeListingETH{value: wethListing.amount}(signedListing);
+        marketplace.executeListing{value: wethListing.amount}(signedListing);
     }
 
     function testCurrencyMismatchETH() public {
@@ -765,7 +764,7 @@ contract MarketplaceTest is Test {
         // user tries to execute usdt listing with executeListingETH
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.CurrencyMismatch.selector));
-        marketplace.executeListingETH{value: usdtListing.amount}(signedListing);
+        marketplace.executeListing{value: usdtListing.amount}(signedListing);
     }
 
     function testPaymentMismatch() public {
@@ -806,7 +805,7 @@ contract MarketplaceTest is Test {
         // user2 tries to purchase listing with wrong msg.value
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.PaymentMismatch.selector));
-        marketplace.executeListingETH{value: wethListing.amount / 2}(signedListing);
+        marketplace.executeListing{value: wethListing.amount / 2}(signedListing);
     }
 
     function testInvalidSignature() public {
@@ -847,6 +846,20 @@ contract MarketplaceTest is Test {
         // user2 tries to purchase listing with wrong parameters
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.SignatureInvalid.selector));
-        marketplace.executeListingETH{value: wethListing.amount * 2}(signedListing);
+        marketplace.executeListing{value: wethListing.amount * 2}(signedListing);
+    }
+
+    function testInvalidAddress() public {
+        // try setting fee recipient to zero address
+        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.InvalidAddress.selector));
+        marketplace.setMarketplaceFeeRecipient(address(0));
+
+        // try setting fee recipient to current fee receiver
+        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.InvalidAddress.selector));
+        marketplace.setMarketplaceFeeRecipient(feeReceiver);
+
+        // try adding zero address to accepted currencies
+        vm.expectRevert(abi.encodeWithSelector(IMichiMarketplace.InvalidAddress.selector));
+        marketplace.addAcceptedCurrency(address(0));
     }
 }

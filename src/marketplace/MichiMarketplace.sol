@@ -35,6 +35,8 @@ contract MichiMarketplace is IMichiMarketplace, Ownable {
     address[] public listAcceptedCollections;
 
     constructor(address weth_, address marketplaceFeeRecipient_, uint256 marketplaceFee_, uint256 precision_) {
+        if (weth_ == address(0) || marketplaceFeeRecipient_ == address(0)) revert InvalidAddress();
+        if (precision_ == 0) revert InvalidValue();
         domainSeparator = keccak256(
             abi.encode(
                 keccak256("EIP712Domain(string name,string version,uint256 chainId, address verifyingContract)"),
@@ -70,37 +72,19 @@ contract MichiMarketplace is IMichiMarketplace, Ownable {
         emit OrdersCancelled(msg.sender, orderNonces);
     }
 
-    function executeListingETH(Listing calldata listing) external payable override {
-        if (!isCurrencyAccepted[listing.order.currency]) revert CurrencyNotAccepted();
-        if (!isCollectionAccepted[listing.order.collection]) revert CollectionNotAccepted();
-        if (listing.order.currency != weth) revert CurrencyMismatch();
-        if (msg.sender == listing.seller) revert OrderCreatorCannotExecute();
-
-        _validateListing(listing);
-
-        _transferWalletForPayment(listing.order, listing.seller, msg.sender, true);
-
-        isUserNonceExecutedOrCancelled[listing.seller][listing.nonce] = true;
-
-        emit WalletPurchased(
-            listing.seller,
-            msg.sender,
-            listing.order.collection,
-            listing.order.currency,
-            listing.order.tokenId,
-            listing.order.amount,
-            listing.nonce
-        );
-    }
-
-    function executeListing(Listing calldata listing) external override {
+    function executeListing(Listing calldata listing) external payable override {
         if (!isCurrencyAccepted[listing.order.currency]) revert CurrencyNotAccepted();
         if (!isCollectionAccepted[listing.order.collection]) revert CollectionNotAccepted();
         if (msg.sender == listing.seller) revert OrderCreatorCannotExecute();
 
         _validateListing(listing);
 
-        _transferWalletForPayment(listing.order, listing.seller, msg.sender, false);
+        if (msg.value != 0) {
+            if (listing.order.currency != weth) revert CurrencyMismatch();
+            _transferWalletForPayment(listing.order, listing.seller, msg.sender, true);
+        } else {
+            _transferWalletForPayment(listing.order, listing.seller, msg.sender, false);
+        }
 
         isUserNonceExecutedOrCancelled[listing.seller][listing.nonce] = true;
 
@@ -139,15 +123,18 @@ contract MichiMarketplace is IMichiMarketplace, Ownable {
 
     function setMarketplaceFee(uint256 newFee) external onlyOwner {
         if (newFee > 1000) revert InvalidFee();
+        uint256 oldFee = marketplaceFee;
+        marketplaceFee = newFee;
 
-        emit NewMarketplaceFee(newFee);
+        emit NewMarketplaceFee(newFee, oldFee);
     }
 
     function setMarketplaceFeeRecipient(address newFeeRecipient) external onlyOwner {
         if (newFeeRecipient == address(0) || newFeeRecipient == marketplaceFeeRecipient) revert InvalidAddress();
+        address oldFeeRecipient = marketplaceFeeRecipient;
         marketplaceFeeRecipient = newFeeRecipient;
 
-        emit NewMarketplaceFeeRecipient(newFeeRecipient);
+        emit NewMarketplaceFeeRecipient(newFeeRecipient, oldFeeRecipient);
     }
 
     function getListAcceptedCurrencies() public view returns (address[] memory) {
@@ -156,6 +143,7 @@ contract MichiMarketplace is IMichiMarketplace, Ownable {
 
     function addAcceptedCurrency(address newCurrency) external onlyOwner {
         if (isCurrencyAccepted[newCurrency]) revert CurrencyAlreadyAccepted();
+        if (newCurrency == address(0)) revert InvalidAddress();
         isCurrencyAccepted[newCurrency] = true;
         listAcceptedCurrencies.push(newCurrency);
 
@@ -173,6 +161,8 @@ contract MichiMarketplace is IMichiMarketplace, Ownable {
                 break;
             }
         }
+
+        emit CurrencyRemoved(currencyToRemove);
     }
 
     function addAcceptedCollection(address newCollection) external onlyOwner {
@@ -194,6 +184,8 @@ contract MichiMarketplace is IMichiMarketplace, Ownable {
                 break;
             }
         }
+
+        emit CollectionRemoved(collectionToRemove);
     }
 
     function _validateListing(Listing calldata listing) internal view {

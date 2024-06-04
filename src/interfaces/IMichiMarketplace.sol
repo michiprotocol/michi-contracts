@@ -34,6 +34,8 @@ interface IMichiMarketplace {
 
     error InvalidFee();
 
+    error InvalidValue();
+
     error InvalidAddress();
 
     event OrdersCancelled(address user, uint256[] orderNonces);
@@ -50,21 +52,23 @@ interface IMichiMarketplace {
         uint256 nonce
     );
 
-    event NewMarketplaceFee(uint256 indexed newMarketplaceFee);
+    event NewMarketplaceFee(uint256 indexed newMarketplaceFee, uint256 indexed oldMarketplaceFee);
 
-    event NewMarketplaceFeeRecipient(address indexed newFeeRecipient);
+    event NewMarketplaceFeeRecipient(address indexed newFeeRecipient, address indexed oldFeeRecipient);
 
     event NewCurrencyAccepted(address indexed newCurrency);
 
+    event CurrencyRemoved(address indexed removedCurrency);
+
     event NewCollectionAccepted(address indexed newCollection);
+
+    event CollectionRemoved(address indexed removedCollection);
 
     function cancelAllOrdersForCaller(uint256 minNonce) external;
 
     function cancelOrdersForCaller(uint256[] calldata orderNonces) external;
 
-    function executeListingETH(Listing calldata listing) external payable;
-
-    function executeListing(Listing calldata listing) external;
+    function executeListing(Listing calldata listing) external payable;
 
     function acceptOffer(Offer calldata offer) external;
 
