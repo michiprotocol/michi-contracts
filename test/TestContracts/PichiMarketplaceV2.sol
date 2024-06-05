@@ -6,14 +6,14 @@ import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../interfaces/IPichiMarketplace.sol";
-import "../libraries/SignatureAuthentication.sol";
-import {Order, Listing, Offer} from "../libraries/OrderTypes.sol";
+import "src/interfaces/IPichiMarketplace.sol";
+import "src/libraries/SignatureAuthentication.sol";
+import {Order, Listing, Offer} from "src/libraries/OrderTypes.sol";
 
 /// @title PichiMarketplace
 /// @dev NFT Marketplace for trading of ERC-6551 Accounts from Pichi Finance
 /// @dev Utilizes EIP-712 signatures for off-chain signing and on-chain settlement of orders
-contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeable {
+contract PichiMarketplaceV2 is IPichiMarketplace, Initializable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
     /// @notice contract domain separator for EIP-712 compliance
@@ -64,7 +64,7 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
             abi.encode(
                 keccak256("EIP712Domain(string name,string version,uint256 chainId, address verifyingContract)"),
                 keccak256("PichiMarketplace"),
-                keccak256(bytes("1")),
+                keccak256(bytes("2")),
                 block.chainid,
                 address(this)
             )
@@ -238,7 +238,7 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
     }
 
     function getVersion() public view returns (uint256) {
-        return 1;
+        return 2;
     }
 
     function _validateListing(Listing calldata listing) internal view {

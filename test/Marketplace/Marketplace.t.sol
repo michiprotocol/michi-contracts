@@ -3,9 +3,12 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import "../TestContracts/WETH.sol";
 import "../TestContracts/MockUSDT.sol";
+import "../TestContracts/PichiMarketplaceV2.sol";
 import "../libraries/SignatureUtils.sol";
 
 import "src/marketplace/PichiMarketplace.sol";
@@ -14,11 +17,18 @@ import {Order, Listing, Offer} from "src/libraries/OrderTypes.sol";
 import "src/libraries/SignatureAuthentication.sol";
 
 contract MarketplaceTest is Test {
-    PichiMarketplace public marketplace;
+    PichiMarketplace public v1Marketplace;
+    PichiMarketplaceV2 public v2Marketplace;
+
     MichiWalletNFT public michiWalletNFT;
     WETH public weth;
     MockUSDT public usdt;
     SignatureUtils public sigUtils;
+
+    TransparentUpgradeableProxy public transparentProxy;
+    ProxyAdmin public proxyAdmin;
+
+    PichiMarketplace public proxyInstance;
 
     uint256 internal user1PrivateKey;
     uint256 internal user2PrivateKey;
@@ -49,22 +59,33 @@ contract MarketplaceTest is Test {
     }
 
     function setUp() public {
-        feeReceiver = vm.addr(10);
-        weth = new WETH();
-        usdt = new MockUSDT();
-        michiWalletNFT = new MichiWalletNFT(0, 0);
-        marketplace = new PichiMarketplace(address(weth), feeReceiver, 100, 10000);
-        sigUtils = new SignatureUtils(marketplace.domainSeparator());
-
-        marketplace.addAcceptedCurrency(address(weth));
-        marketplace.addAcceptedCurrency(address(usdt));
-        marketplace.addAcceptedCollection(address(michiWalletNFT));
-
         user1PrivateKey = 0x1;
         user2PrivateKey = 0x2;
 
         user1 = vm.addr(user1PrivateKey);
         user2 = vm.addr(user2PrivateKey);
+
+        feeReceiver = vm.addr(10);
+        weth = new WETH();
+        usdt = new MockUSDT();
+        michiWalletNFT = new MichiWalletNFT(0, 0);
+        v1Marketplace = new PichiMarketplace();
+
+        transparentProxy = new TransparentUpgradeableProxy(address(v1Marketplace), address(this), "");
+        proxyAdmin = new ProxyAdmin();
+        ITransparentUpgradeableProxy(address(transparentProxy)).changeAdmin(address(proxyAdmin));
+        proxyInstance = PichiMarketplace(address(transparentProxy));
+
+        proxyInstance.initialize(address(weth), feeReceiver, 100, 10000);
+
+        vm.prank(user1);
+        bytes32 domainSeparator = proxyInstance.domainSeparator();
+        sigUtils = new SignatureUtils(domainSeparator);
+
+        console.logAddress(proxyInstance.owner());
+        proxyInstance.addAcceptedCurrency(address(weth));
+        proxyInstance.addAcceptedCurrency(address(usdt));
+        proxyInstance.addAcceptedCollection(address(michiWalletNFT));
 
         vm.deal(user1, 1000 ether);
         vm.deal(user2, 1000 ether);
@@ -84,7 +105,7 @@ contract MarketplaceTest is Test {
     function testExecuteListingETH() public {
         // user1 creates weth listing
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(marketplace), true);
+        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         SignatureUtils.Listing memory wethListing = SignatureUtils.Listing({
             seller: user1,
@@ -102,8 +123,8 @@ contract MarketplaceTest is Test {
 
         uint256 sellerBalance = user1.balance;
 
-        uint256 fee = marketplace.marketplaceFee();
-        uint256 precision = marketplace.precision();
+        uint256 fee = proxyInstance.marketplaceFee();
+        uint256 precision = proxyInstance.precision();
         uint256 expectedFees = wethListing.amount * fee / precision;
         uint256 paymentAmountAfterFees = wethListing.amount - expectedFees;
 
@@ -125,12 +146,12 @@ contract MarketplaceTest is Test {
 
         // user2 purchases listing
         vm.prank(user2);
-        marketplace.executeListing{value: wethListing.amount}(signedListing);
+        proxyInstance.executeListing{value: wethListing.amount}(signedListing);
 
         //verify that payment, fees, and NFT are transferred correctly
         assertEq(user1.balance, sellerBalance + paymentAmountAfterFees);
         assertEq(michiWalletNFT.ownerOf(wethListing.tokenId), user2);
-        assertEq((marketplace.marketplaceFeeRecipient()).balance, expectedFees);
+        assertEq((proxyInstance.marketplaceFeeRecipient()).balance, expectedFees);
 
         //verify that listing/nonce cannot be reused
         //first transfer wallet back to lister
@@ -142,13 +163,13 @@ contract MarketplaceTest is Test {
 
         vm.prank(user3);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidOrder.selector));
-        marketplace.executeListing{value: wethListing.amount}(signedListing);
+        proxyInstance.executeListing{value: wethListing.amount}(signedListing);
     }
 
     function testExecuteListingERC20() public {
         // user1 creates usdt listing
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(marketplace), true);
+        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         SignatureUtils.Listing memory usdtListing = SignatureUtils.Listing({
             seller: user1,
@@ -166,8 +187,8 @@ contract MarketplaceTest is Test {
 
         uint256 sellerUSDTBalance = usdt.balanceOf(user1);
 
-        uint256 fee = marketplace.marketplaceFee();
-        uint256 precision = marketplace.precision();
+        uint256 fee = proxyInstance.marketplaceFee();
+        uint256 precision = proxyInstance.precision();
         uint256 expectedFees = usdtListing.amount * fee / precision;
         uint256 paymentAmountAfterFees = usdtListing.amount - expectedFees;
 
@@ -189,22 +210,22 @@ contract MarketplaceTest is Test {
 
         // user2 approves usdt
         vm.prank(user2);
-        usdt.approve(address(marketplace), usdtListing.amount);
+        usdt.approve(address(transparentProxy), usdtListing.amount);
         // user2 purchases listing
         vm.prank(user2);
-        marketplace.executeListing{value: 0}(signedListing);
+        proxyInstance.executeListing{value: 0}(signedListing);
 
         //verify that payment, fees, and NFT are transferred correctly
         assertEq(usdt.balanceOf(user1), sellerUSDTBalance + paymentAmountAfterFees);
         assertEq(michiWalletNFT.ownerOf(usdtListing.tokenId), user2);
-        assertEq(usdt.balanceOf(marketplace.marketplaceFeeRecipient()), expectedFees);
+        assertEq(usdt.balanceOf(proxyInstance.marketplaceFeeRecipient()), expectedFees);
     }
 
     function testAcceptOffer() public {
         // user2 creates offer to buy user 1's wallet #0
         uint256 offerAmount = 10000e18;
         vm.prank(user2);
-        usdt.approve(address(marketplace), offerAmount);
+        usdt.approve(address(transparentProxy), offerAmount);
 
         SignatureUtils.Offer memory usdtOffer = SignatureUtils.Offer({
             buyer: user2,
@@ -222,8 +243,8 @@ contract MarketplaceTest is Test {
 
         uint256 sellerUSDTBalance = usdt.balanceOf(user1);
 
-        uint256 fee = marketplace.marketplaceFee();
-        uint256 precision = marketplace.precision();
+        uint256 fee = proxyInstance.marketplaceFee();
+        uint256 precision = proxyInstance.precision();
         uint256 expectedFees = usdtOffer.amount * fee / precision;
         uint256 paymentAmountAfterFees = usdtOffer.amount - expectedFees;
 
@@ -245,21 +266,21 @@ contract MarketplaceTest is Test {
 
         // user1 accepts offer
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(marketplace), true);
+        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         vm.prank(user1);
-        marketplace.acceptOffer(signedOffer);
+        proxyInstance.acceptOffer(signedOffer);
 
         //verify that payment, fees, and NFT are transferred correctly
         assertEq(usdt.balanceOf(user1), sellerUSDTBalance + paymentAmountAfterFees);
         assertEq(michiWalletNFT.ownerOf(usdtOffer.tokenId), user2);
-        assertEq(usdt.balanceOf(marketplace.marketplaceFeeRecipient()), expectedFees);
+        assertEq(usdt.balanceOf(proxyInstance.marketplaceFeeRecipient()), expectedFees);
     }
 
     function testCancelListing() public {
         // user1 creates weth listing
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(marketplace), true);
+        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         SignatureUtils.Listing memory wethListing = SignatureUtils.Listing({
             seller: user1,
@@ -295,18 +316,18 @@ contract MarketplaceTest is Test {
         uint256[] memory a = new uint256[](1);
         a[0] = wethListing.nonce;
         vm.prank(user1);
-        marketplace.cancelOrdersForCaller(a);
+        proxyInstance.cancelOrdersForCaller(a);
 
         // user2 cannot execute listing
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidOrder.selector));
-        marketplace.executeListing{value: wethListing.amount}(signedListing);
+        proxyInstance.executeListing{value: wethListing.amount}(signedListing);
     }
 
     function testCancelMultipleListings() public {
         // user1 creates first weth listing
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(marketplace), true);
+        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         SignatureUtils.Listing memory wethListing1 = SignatureUtils.Listing({
             seller: user1,
@@ -371,23 +392,23 @@ contract MarketplaceTest is Test {
 
         // user1 cancels both listings
         vm.prank(user1);
-        marketplace.cancelAllOrdersForCaller(wethListing2.nonce);
+        proxyInstance.cancelAllOrdersForCaller(wethListing2.nonce);
 
         // user2 cannot execute either listing
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidOrder.selector));
-        marketplace.executeListing{value: wethListing1.amount}(signedListing1);
+        proxyInstance.executeListing{value: wethListing1.amount}(signedListing1);
 
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidOrder.selector));
-        marketplace.executeListing{value: wethListing2.amount}(signedListing2);
+        proxyInstance.executeListing{value: wethListing2.amount}(signedListing2);
     }
 
     function testCancelOffer() public {
         // user2 creates offer to buy user 1's wallet #0
         uint256 offerAmount = 10000e18;
         vm.prank(user2);
-        usdt.approve(address(marketplace), offerAmount);
+        usdt.approve(address(transparentProxy), offerAmount);
 
         SignatureUtils.Offer memory usdtOffer = SignatureUtils.Offer({
             buyer: user2,
@@ -423,22 +444,22 @@ contract MarketplaceTest is Test {
         uint256[] memory a = new uint256[](1);
         a[0] = usdtOffer.nonce;
         vm.prank(user2);
-        marketplace.cancelOrdersForCaller(a);
+        proxyInstance.cancelOrdersForCaller(a);
 
         // user1 cannot accept offer
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(marketplace), true);
+        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidOrder.selector));
-        marketplace.acceptOffer(signedOffer);
+        proxyInstance.acceptOffer(signedOffer);
     }
 
     function testCancelMultipleOffers() public {
         // user2 creates offer to buy user 1's wallet #0
         uint256 offerAmount = 10000e18;
         vm.prank(user2);
-        usdt.approve(address(marketplace), offerAmount);
+        usdt.approve(address(transparentProxy), offerAmount);
 
         SignatureUtils.Offer memory usdtOffer1 = SignatureUtils.Offer({
             buyer: user2,
@@ -503,29 +524,29 @@ contract MarketplaceTest is Test {
 
         // user2 cancels offers
         vm.prank(user2);
-        marketplace.cancelAllOrdersForCaller(usdtOffer2.nonce);
+        proxyInstance.cancelAllOrdersForCaller(usdtOffer2.nonce);
 
         // user1 cannot accepts either offer
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(marketplace), true);
+        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidOrder.selector));
-        marketplace.acceptOffer(signedOffer1);
+        proxyInstance.acceptOffer(signedOffer1);
 
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidOrder.selector));
-        marketplace.acceptOffer(signedOffer2);
+        proxyInstance.acceptOffer(signedOffer2);
     }
 
     function testNotAcceptedCurrency() public {
         // remove usdt from accepted currencies
-        marketplace.removeAcceptedCurrency(address(usdt));
+        proxyInstance.removeAcceptedCurrency(address(usdt));
 
         // user2 creates offer to buy user 1's wallet #0
         uint256 offerAmount = 10000e18;
         vm.prank(user2);
-        usdt.approve(address(marketplace), offerAmount);
+        usdt.approve(address(transparentProxy), offerAmount);
 
         SignatureUtils.Offer memory usdtOffer = SignatureUtils.Offer({
             buyer: user2,
@@ -559,21 +580,21 @@ contract MarketplaceTest is Test {
 
         // user1 cannot accept offer as usdt is not accepted
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(marketplace), true);
+        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.CurrencyNotAccepted.selector));
-        marketplace.acceptOffer(signedOffer);
+        proxyInstance.acceptOffer(signedOffer);
     }
 
     function testNotAcceptedCollection() public {
         //remove michi wallet from accepted collections
-        marketplace.removeAcceptedCollection(address(michiWalletNFT));
+        proxyInstance.removeAcceptedCollection(address(michiWalletNFT));
 
         // user2 creates offer to buy user 1's wallet #0
         uint256 offerAmount = 10000e18;
         vm.prank(user2);
-        usdt.approve(address(marketplace), offerAmount);
+        usdt.approve(address(transparentProxy), offerAmount);
 
         SignatureUtils.Offer memory usdtOffer = SignatureUtils.Offer({
             buyer: user2,
@@ -607,40 +628,40 @@ contract MarketplaceTest is Test {
 
         // user1 cannot accept offer as michi wallet nft is not accepted
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(marketplace), true);
+        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.CollectionNotAccepted.selector));
-        marketplace.acceptOffer(signedOffer);
+        proxyInstance.acceptOffer(signedOffer);
     }
 
     function testCancellingOrders() public {
         // assume user1 has already created 3 offers of nonces 1, 2, and 3
         // user1 cancels orders 1 and 2
         vm.prank(user1);
-        marketplace.cancelAllOrdersForCaller(2);
+        proxyInstance.cancelAllOrdersForCaller(2);
 
         // user1 tries to cancel orders 1 and 2 again
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.NonceLowerThanCurrent.selector));
-        marketplace.cancelAllOrdersForCaller(2);
+        proxyInstance.cancelAllOrdersForCaller(2);
 
         // user1 cancels order 3
         uint256[] memory a = new uint256[](1);
         a[0] = 3;
         vm.prank(user1);
-        marketplace.cancelOrdersForCaller(a);
+        proxyInstance.cancelOrdersForCaller(a);
 
         // user1 tries to cancel order 3 again
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.OrderAlreadyCancelled.selector));
-        marketplace.cancelOrdersForCaller(a);
+        proxyInstance.cancelOrdersForCaller(a);
     }
 
     function testSellerNotOwner() public {
         // user1 creates weth listing
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(marketplace), true);
+        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         SignatureUtils.Listing memory wethListing = SignatureUtils.Listing({
             seller: user1,
@@ -679,13 +700,13 @@ contract MarketplaceTest is Test {
         // user2 purchases listing
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.SellerNotOwner.selector));
-        marketplace.executeListing{value: wethListing.amount}(signedListing);
+        proxyInstance.executeListing{value: wethListing.amount}(signedListing);
     }
 
     function testOrderExpired() public {
         // user1 creates weth listing
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(marketplace), true);
+        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         SignatureUtils.Listing memory wethListing = SignatureUtils.Listing({
             seller: user1,
@@ -723,13 +744,13 @@ contract MarketplaceTest is Test {
         // user2 purchases listing
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.OrderExpired.selector));
-        marketplace.executeListing{value: wethListing.amount}(signedListing);
+        proxyInstance.executeListing{value: wethListing.amount}(signedListing);
     }
 
     function testCurrencyMismatchETH() public {
         // user1 creates usdt listing
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(marketplace), true);
+        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         SignatureUtils.Listing memory usdtListing = SignatureUtils.Listing({
             seller: user1,
@@ -764,13 +785,13 @@ contract MarketplaceTest is Test {
         // user tries to execute usdt listing with executeListingETH
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.CurrencyMismatch.selector));
-        marketplace.executeListing{value: usdtListing.amount}(signedListing);
+        proxyInstance.executeListing{value: usdtListing.amount}(signedListing);
     }
 
     function testPaymentMismatch() public {
         // user1 creates weth listing
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(marketplace), true);
+        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         SignatureUtils.Listing memory wethListing = SignatureUtils.Listing({
             seller: user1,
@@ -805,13 +826,13 @@ contract MarketplaceTest is Test {
         // user2 tries to purchase listing with wrong msg.value
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.PaymentMismatch.selector));
-        marketplace.executeListing{value: wethListing.amount / 2}(signedListing);
+        proxyInstance.executeListing{value: wethListing.amount / 2}(signedListing);
     }
 
     function testInvalidSignature() public {
         // user1 creates weth listing
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(marketplace), true);
+        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         SignatureUtils.Listing memory wethListing = SignatureUtils.Listing({
             seller: user1,
@@ -846,20 +867,29 @@ contract MarketplaceTest is Test {
         // user2 tries to purchase listing with wrong parameters
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.SignatureInvalid.selector));
-        marketplace.executeListing{value: wethListing.amount * 2}(signedListing);
+        proxyInstance.executeListing{value: wethListing.amount * 2}(signedListing);
     }
 
     function testInvalidAddress() public {
         // try setting fee recipient to zero address
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidAddress.selector));
-        marketplace.setMarketplaceFeeRecipient(address(0));
+        proxyInstance.setMarketplaceFeeRecipient(address(0));
 
         // try setting fee recipient to current fee receiver
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidAddress.selector));
-        marketplace.setMarketplaceFeeRecipient(feeReceiver);
+        proxyInstance.setMarketplaceFeeRecipient(feeReceiver);
 
         // try adding zero address to accepted currencies
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidAddress.selector));
-        marketplace.addAcceptedCurrency(address(0));
+        proxyInstance.addAcceptedCurrency(address(0));
+    }
+
+    function testUpgradeContract() public {
+        // deploy v2 marketplace with version 2 in domain separator
+        v2Marketplace = new PichiMarketplaceV2();
+        proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(transparentProxy)), address(v2Marketplace));
+
+        uint256 currentVersion = PichiMarketplaceV2(address(transparentProxy)).getVersion();
+        assertEq(currentVersion, 2);
     }
 }
