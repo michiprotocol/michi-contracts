@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
-contract TestMichiWalletNFT is ERC721, Ownable {
+contract TestPichiWalletNFT is ERC721, Ownable {
     /// @notice tracks the next index to be minted
     uint256 public currentIndex;
 
@@ -17,7 +17,7 @@ contract TestMichiWalletNFT is ERC721, Ownable {
 
     error WithdrawalFailed();
 
-    constructor(uint256 startingIndex_) ERC721("Test Michi Wallet NFT", "MICHI") {
+    constructor(uint256 startingIndex_) ERC721("Test Pichi Wallet NFT", "PICHI") {
         currentIndex = startingIndex_;
     }
 

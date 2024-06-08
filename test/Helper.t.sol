@@ -13,12 +13,12 @@ import "tokenbound/src/AccountGuardian.sol";
 import "tokenbound/lib/multicall-authenticated/src/Multicall3.sol";
 import "./TestContracts/MockYT.sol";
 
-import "src/MichiWalletNFT.sol";
-import {MichiHelper} from "src/MichiHelper.sol";
+import "src/PichiWalletNFT.sol";
+import {PichiHelper} from "src/PichiHelper.sol";
 
 contract HelperTestFuzz is Test {
-    MichiWalletNFT public michiWalletNFT;
-    MichiHelper public michiHelper;
+    PichiWalletNFT public pichiWalletNFT;
+    PichiHelper public pichiHelper;
     MockYT public mockYT;
 
     Multicall3 public multicall;
@@ -31,7 +31,7 @@ contract HelperTestFuzz is Test {
     function setUp() public {
         address feeRecipient = vm.addr(5);
 
-        michiWalletNFT = new MichiWalletNFT(0, 0.1 ether);
+        pichiWalletNFT = new PichiWalletNFT(0, 0.1 ether);
         registry = new ERC6551Registry();
         guardian = new AccountGuardian(address(this));
         multicall = new Multicall3();
@@ -39,11 +39,11 @@ contract HelperTestFuzz is Test {
             new AccountV3Upgradable(address(1), address(multicall), address(registry), address(guardian));
         proxy = new AccountProxy(address(guardian), address(upgradeableImplementation));
         mockYT = new MockYT();
-        michiHelper = new MichiHelper(
+        pichiHelper = new PichiHelper(
             address(registry),
             address(upgradeableImplementation),
             address(proxy),
-            address(michiWalletNFT),
+            address(pichiWalletNFT),
             feeRecipient,
             0,
             10000
@@ -56,19 +56,19 @@ contract HelperTestFuzz is Test {
         address user1 = vm.addr(1);
         vm.deal(user1, 10 ether);
 
-        uint256 firstIdMinted = michiWalletNFT.currentIndex();
+        uint256 firstIdMinted = pichiWalletNFT.currentIndex();
 
-        uint256 mintCost = michiWalletNFT.getMintPrice() * quantity;
+        uint256 mintCost = pichiWalletNFT.getMintPrice() * quantity;
         vm.prank(user1);
-        michiHelper.createWallet{value: mintCost}(quantity);
+        pichiHelper.createWallet{value: mintCost}(quantity);
 
-        uint256 nextId = michiWalletNFT.currentIndex();
+        uint256 nextId = pichiWalletNFT.currentIndex();
 
         for (uint256 i = firstIdMinted; i < nextId; i++) {
             // check that nft is minted to user1
-            assertEq(michiWalletNFT.ownerOf(i), user1);
+            assertEq(pichiWalletNFT.ownerOf(i), user1);
 
-            address computedAddress = registry.account(address(proxy), 0, block.chainid, address(michiWalletNFT), i);
+            address computedAddress = registry.account(address(proxy), 0, block.chainid, address(pichiWalletNFT), i);
 
             // check that predicted address is owned by user1
             AccountV3 account = AccountV3(payable(computedAddress));
@@ -80,14 +80,14 @@ contract HelperTestFuzz is Test {
         vm.assume(amount < 100000 ether);
         address user1 = vm.addr(1);
         address user2 = vm.addr(2);
-        uint256 index = michiWalletNFT.currentIndex();
+        uint256 index = pichiWalletNFT.currentIndex();
         vm.deal(user1, 10 ether);
 
         // compute predicted address using expected id
-        address computedAddress = registry.account(address(proxy), 0, block.chainid, address(michiWalletNFT), index);
+        address computedAddress = registry.account(address(proxy), 0, block.chainid, address(pichiWalletNFT), index);
 
         vm.prank(user1);
-        michiHelper.createWallet{value: 0.1 ether}(1);
+        pichiHelper.createWallet{value: 0.1 ether}(1);
 
         // mint mock YT tokens
         mockYT.mint(user1, amount);
@@ -96,32 +96,32 @@ contract HelperTestFuzz is Test {
         assertEq(mockYT.balanceOf(user2), amount);
 
         // add test YT to approved tokens list
-        michiHelper.addApprovedToken(address(mockYT));
-        assertEq(michiHelper.approvedToken(address(mockYT)), true);
+        pichiHelper.addApprovedToken(address(mockYT));
+        assertEq(pichiHelper.approvedToken(address(mockYT)), true);
 
         uint256 totalDepositAmount = amount;
-        uint256 feeAmount = totalDepositAmount * michiHelper.depositFee() * michiHelper.feePrecision();
+        uint256 feeAmount = totalDepositAmount * pichiHelper.depositFee() * pichiHelper.feePrecision();
         uint256 depositAmountAfterFees = totalDepositAmount - feeAmount;
 
         // user2 should fail to deposit YT
         vm.prank(user2);
-        mockYT.approve(address(michiHelper), amount);
+        mockYT.approve(address(pichiHelper), amount);
         vm.prank(user2);
-        vm.expectRevert(abi.encodeWithSelector(MichiHelper.UnauthorizedUser.selector, user2));
-        michiHelper.depositToken(address(mockYT), computedAddress, amount, true);
+        vm.expectRevert(abi.encodeWithSelector(PichiHelper.UnauthorizedUser.selector, user2));
+        pichiHelper.depositToken(address(mockYT), computedAddress, amount, true);
 
         // user1 should succeed in depositing YT
 
         vm.prank(user1);
-        mockYT.approve(address(michiHelper), amount);
+        mockYT.approve(address(pichiHelper), amount);
         vm.prank(user1);
-        michiHelper.depositToken(address(mockYT), computedAddress, amount, true);
+        pichiHelper.depositToken(address(mockYT), computedAddress, amount, true);
 
         assertEq(mockYT.balanceOf(computedAddress), depositAmountAfterFees);
-        assertEq(mockYT.balanceOf(michiHelper.feeReceiver()), feeAmount);
-        assertEq(michiHelper.depositsByAccountByToken(computedAddress, address(mockYT)), depositAmountAfterFees);
-        assertEq(michiHelper.depositsByToken(address(mockYT)), depositAmountAfterFees);
-        assertEq(michiHelper.feesCollectedByToken(address(mockYT)), feeAmount);
+        assertEq(mockYT.balanceOf(pichiHelper.feeReceiver()), feeAmount);
+        assertEq(pichiHelper.depositsByAccountByToken(computedAddress, address(mockYT)), depositAmountAfterFees);
+        assertEq(pichiHelper.depositsByToken(address(mockYT)), depositAmountAfterFees);
+        assertEq(pichiHelper.feesCollectedByToken(address(mockYT)), feeAmount);
 
         // user2 should fail transfering out YT
         AccountV3Upgradable account = AccountV3Upgradable(payable(computedAddress));

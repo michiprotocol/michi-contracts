@@ -12,7 +12,7 @@ import "../TestContracts/PichiMarketplaceV2.sol";
 import "../libraries/SignatureUtils.sol";
 
 import "src/marketplace/PichiMarketplace.sol";
-import "src/MichiWalletNFT.sol";
+import "src/PichiWalletNFT.sol";
 import {Order, Listing, Offer} from "src/libraries/OrderTypes.sol";
 import "src/libraries/SignatureAuthentication.sol";
 
@@ -20,7 +20,7 @@ contract MarketplaceTest is Test {
     PichiMarketplace public v1Marketplace;
     PichiMarketplaceV2 public v2Marketplace;
 
-    MichiWalletNFT public michiWalletNFT;
+    PichiWalletNFT public pichiWalletNFT;
     WETH public weth;
     MockUSDT public usdt;
     SignatureUtils public sigUtils;
@@ -68,7 +68,7 @@ contract MarketplaceTest is Test {
         feeReceiver = vm.addr(10);
         weth = new WETH();
         usdt = new MockUSDT();
-        michiWalletNFT = new MichiWalletNFT(0, 0);
+        pichiWalletNFT = new PichiWalletNFT(0, 0);
         v1Marketplace = new PichiMarketplace();
 
         transparentProxy = new TransparentUpgradeableProxy(address(v1Marketplace), address(this), "");
@@ -85,7 +85,7 @@ contract MarketplaceTest is Test {
         console.logAddress(proxyInstance.owner());
         proxyInstance.addAcceptedCurrency(address(weth));
         proxyInstance.addAcceptedCurrency(address(usdt));
-        proxyInstance.addAcceptedCollection(address(michiWalletNFT));
+        proxyInstance.addAcceptedCollection(address(pichiWalletNFT));
 
         vm.deal(user1, 1000 ether);
         vm.deal(user2, 1000 ether);
@@ -98,18 +98,18 @@ contract MarketplaceTest is Test {
         usdt.mint(user1, 100000e18);
         usdt.mint(user2, 100000e18);
 
-        michiWalletNFT.mint(user1); // tokenId 0
-        michiWalletNFT.mint(user1); // tokenId 1
+        pichiWalletNFT.mint(user1); // tokenId 0
+        pichiWalletNFT.mint(user1); // tokenId 1
     }
 
     function testExecuteListingETH() public {
         // user1 creates weth listing
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
+        pichiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         SignatureUtils.Listing memory wethListing = SignatureUtils.Listing({
             seller: user1,
-            collection: address(michiWalletNFT),
+            collection: address(pichiWalletNFT),
             currency: address(weth),
             tokenId: 0,
             amount: 1 ether,
@@ -150,13 +150,13 @@ contract MarketplaceTest is Test {
 
         //verify that payment, fees, and NFT are transferred correctly
         assertEq(user1.balance, sellerBalance + paymentAmountAfterFees);
-        assertEq(michiWalletNFT.ownerOf(wethListing.tokenId), user2);
+        assertEq(pichiWalletNFT.ownerOf(wethListing.tokenId), user2);
         assertEq((proxyInstance.marketplaceFeeRecipient()).balance, expectedFees);
 
         //verify that listing/nonce cannot be reused
         //first transfer wallet back to lister
         vm.prank(user2);
-        michiWalletNFT.transferFrom(user2, user1, wethListing.tokenId);
+        pichiWalletNFT.transferFrom(user2, user1, wethListing.tokenId);
 
         address user3 = vm.addr(3);
         vm.deal(user3, 100 ether);
@@ -169,11 +169,11 @@ contract MarketplaceTest is Test {
     function testExecuteListingERC20() public {
         // user1 creates usdt listing
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
+        pichiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         SignatureUtils.Listing memory usdtListing = SignatureUtils.Listing({
             seller: user1,
-            collection: address(michiWalletNFT),
+            collection: address(pichiWalletNFT),
             currency: address(usdt),
             tokenId: 0,
             amount: 10000e18,
@@ -217,7 +217,7 @@ contract MarketplaceTest is Test {
 
         //verify that payment, fees, and NFT are transferred correctly
         assertEq(usdt.balanceOf(user1), sellerUSDTBalance + paymentAmountAfterFees);
-        assertEq(michiWalletNFT.ownerOf(usdtListing.tokenId), user2);
+        assertEq(pichiWalletNFT.ownerOf(usdtListing.tokenId), user2);
         assertEq(usdt.balanceOf(proxyInstance.marketplaceFeeRecipient()), expectedFees);
     }
 
@@ -229,7 +229,7 @@ contract MarketplaceTest is Test {
 
         SignatureUtils.Offer memory usdtOffer = SignatureUtils.Offer({
             buyer: user2,
-            collection: address(michiWalletNFT),
+            collection: address(pichiWalletNFT),
             currency: address(usdt),
             tokenId: 0,
             amount: offerAmount,
@@ -266,25 +266,25 @@ contract MarketplaceTest is Test {
 
         // user1 accepts offer
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
+        pichiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         vm.prank(user1);
         proxyInstance.acceptOffer(signedOffer);
 
         //verify that payment, fees, and NFT are transferred correctly
         assertEq(usdt.balanceOf(user1), sellerUSDTBalance + paymentAmountAfterFees);
-        assertEq(michiWalletNFT.ownerOf(usdtOffer.tokenId), user2);
+        assertEq(pichiWalletNFT.ownerOf(usdtOffer.tokenId), user2);
         assertEq(usdt.balanceOf(proxyInstance.marketplaceFeeRecipient()), expectedFees);
     }
 
     function testCancelListing() public {
         // user1 creates weth listing
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
+        pichiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         SignatureUtils.Listing memory wethListing = SignatureUtils.Listing({
             seller: user1,
-            collection: address(michiWalletNFT),
+            collection: address(pichiWalletNFT),
             currency: address(weth),
             tokenId: 0,
             amount: 1 ether,
@@ -327,11 +327,11 @@ contract MarketplaceTest is Test {
     function testCancelMultipleListings() public {
         // user1 creates first weth listing
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
+        pichiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         SignatureUtils.Listing memory wethListing1 = SignatureUtils.Listing({
             seller: user1,
-            collection: address(michiWalletNFT),
+            collection: address(pichiWalletNFT),
             currency: address(weth),
             tokenId: 0,
             amount: 1 ether,
@@ -362,7 +362,7 @@ contract MarketplaceTest is Test {
         // user1 created second weth listing
         SignatureUtils.Listing memory wethListing2 = SignatureUtils.Listing({
             seller: user1,
-            collection: address(michiWalletNFT),
+            collection: address(pichiWalletNFT),
             currency: address(weth),
             tokenId: 1,
             amount: 1 ether,
@@ -412,7 +412,7 @@ contract MarketplaceTest is Test {
 
         SignatureUtils.Offer memory usdtOffer = SignatureUtils.Offer({
             buyer: user2,
-            collection: address(michiWalletNFT),
+            collection: address(pichiWalletNFT),
             currency: address(usdt),
             tokenId: 0,
             amount: offerAmount,
@@ -448,7 +448,7 @@ contract MarketplaceTest is Test {
 
         // user1 cannot accept offer
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
+        pichiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidOrder.selector));
@@ -463,7 +463,7 @@ contract MarketplaceTest is Test {
 
         SignatureUtils.Offer memory usdtOffer1 = SignatureUtils.Offer({
             buyer: user2,
-            collection: address(michiWalletNFT),
+            collection: address(pichiWalletNFT),
             currency: address(usdt),
             tokenId: 0,
             amount: offerAmount,
@@ -494,7 +494,7 @@ contract MarketplaceTest is Test {
         // user2 creates offer to buy user 1's wallet #1
         SignatureUtils.Offer memory usdtOffer2 = SignatureUtils.Offer({
             buyer: user2,
-            collection: address(michiWalletNFT),
+            collection: address(pichiWalletNFT),
             currency: address(usdt),
             tokenId: 1,
             amount: offerAmount,
@@ -528,7 +528,7 @@ contract MarketplaceTest is Test {
 
         // user1 cannot accepts either offer
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
+        pichiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.InvalidOrder.selector));
@@ -550,7 +550,7 @@ contract MarketplaceTest is Test {
 
         SignatureUtils.Offer memory usdtOffer = SignatureUtils.Offer({
             buyer: user2,
-            collection: address(michiWalletNFT),
+            collection: address(pichiWalletNFT),
             currency: address(usdt),
             tokenId: 0,
             amount: offerAmount,
@@ -580,7 +580,7 @@ contract MarketplaceTest is Test {
 
         // user1 cannot accept offer as usdt is not accepted
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
+        pichiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.CurrencyNotAccepted.selector));
@@ -588,8 +588,8 @@ contract MarketplaceTest is Test {
     }
 
     function testNotAcceptedCollection() public {
-        //remove michi wallet from accepted collections
-        proxyInstance.removeAcceptedCollection(address(michiWalletNFT));
+        //remove pichi wallet from accepted collections
+        proxyInstance.removeAcceptedCollection(address(pichiWalletNFT));
 
         // user2 creates offer to buy user 1's wallet #0
         uint256 offerAmount = 10000e18;
@@ -598,7 +598,7 @@ contract MarketplaceTest is Test {
 
         SignatureUtils.Offer memory usdtOffer = SignatureUtils.Offer({
             buyer: user2,
-            collection: address(michiWalletNFT),
+            collection: address(pichiWalletNFT),
             currency: address(usdt),
             tokenId: 0,
             amount: offerAmount,
@@ -626,9 +626,9 @@ contract MarketplaceTest is Test {
             nonce: usdtOffer.nonce
         });
 
-        // user1 cannot accept offer as michi wallet nft is not accepted
+        // user1 cannot accept offer as pichi wallet nft is not accepted
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
+        pichiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.CollectionNotAccepted.selector));
@@ -661,11 +661,11 @@ contract MarketplaceTest is Test {
     function testSellerNotOwner() public {
         // user1 creates weth listing
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
+        pichiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         SignatureUtils.Listing memory wethListing = SignatureUtils.Listing({
             seller: user1,
-            collection: address(michiWalletNFT),
+            collection: address(pichiWalletNFT),
             currency: address(weth),
             tokenId: 0,
             amount: 1 ether,
@@ -695,7 +695,7 @@ contract MarketplaceTest is Test {
 
         // user1 transfers wallet away
         vm.prank(user1);
-        michiWalletNFT.transferFrom(user1, user2, wethListing.tokenId);
+        pichiWalletNFT.transferFrom(user1, user2, wethListing.tokenId);
 
         // user2 purchases listing
         vm.prank(user2);
@@ -706,11 +706,11 @@ contract MarketplaceTest is Test {
     function testOrderExpired() public {
         // user1 creates weth listing
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
+        pichiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         SignatureUtils.Listing memory wethListing = SignatureUtils.Listing({
             seller: user1,
-            collection: address(michiWalletNFT),
+            collection: address(pichiWalletNFT),
             currency: address(weth),
             tokenId: 0,
             amount: 1 ether,
@@ -750,11 +750,11 @@ contract MarketplaceTest is Test {
     function testCurrencyMismatchETH() public {
         // user1 creates usdt listing
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
+        pichiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         SignatureUtils.Listing memory usdtListing = SignatureUtils.Listing({
             seller: user1,
-            collection: address(michiWalletNFT),
+            collection: address(pichiWalletNFT),
             currency: address(usdt),
             tokenId: 0,
             amount: 1 ether,
@@ -791,11 +791,11 @@ contract MarketplaceTest is Test {
     function testPaymentMismatch() public {
         // user1 creates weth listing
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
+        pichiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         SignatureUtils.Listing memory wethListing = SignatureUtils.Listing({
             seller: user1,
-            collection: address(michiWalletNFT),
+            collection: address(pichiWalletNFT),
             currency: address(weth),
             tokenId: 0,
             amount: 1 ether,
@@ -832,11 +832,11 @@ contract MarketplaceTest is Test {
     function testInvalidSignature() public {
         // user1 creates weth listing
         vm.prank(user1);
-        michiWalletNFT.setApprovalForAll(address(transparentProxy), true);
+        pichiWalletNFT.setApprovalForAll(address(transparentProxy), true);
 
         SignatureUtils.Listing memory wethListing = SignatureUtils.Listing({
             seller: user1,
-            collection: address(michiWalletNFT),
+            collection: address(pichiWalletNFT),
             currency: address(weth),
             tokenId: 0,
             amount: 1 ether,

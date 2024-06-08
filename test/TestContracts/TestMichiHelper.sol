@@ -8,18 +8,18 @@ import "erc6551/interfaces/IERC6551Registry.sol";
 import "tokenbound/src/AccountV3Upgradable.sol";
 import "tokenbound/src/AccountProxy.sol";
 
-import "./ITestMichiWalletNFT.sol";
+import "./ITestPichiWalletNFT.sol";
 
 /**
- * @title MichiHelper
+ * @title PichiHelper
  *     @dev Implementation of a helper contract to create ERC-6551 accounts (TBAs)
  *     and deposit approved tokens to the TBA
  */
-contract TestMichiHelper is Ownable {
+contract TestPichiHelper is Ownable {
     using SafeERC20 for IERC20;
 
-    /// @notice instance of Michi Wallet NFT (NFT that represents 6551 wallet)
-    ITestMichiWalletNFT public testMichiWalletNFT;
+    /// @notice instance of Pichi Wallet NFT (NFT that represents 6551 wallet)
+    ITestPichiWalletNFT public testPichiWalletNFT;
 
     /// @notice instance of ERC6551 Registry
     IERC6551Registry public erc6551Registry;
@@ -90,11 +90,11 @@ contract TestMichiHelper is Ownable {
     /// @notice error returned when attempting to remove an unapproved token
     error TokenNotApproved(address token);
 
-    /// @dev constructor for MichiHelper contract
+    /// @dev constructor for PichiHelper contract
     /// @param erc6551Registry_ address of 6551 registry
     /// @param erc6551Implementation_ address of current 6551 implementation
     /// @param erc6551Proxy_ address of current 6551 proxy
-    /// @param michiWalletNFT_ address of MichiWalletNFT ERC721
+    /// @param pichiWalletNFT_ address of PichiWalletNFT ERC721
     /// @param feeReceiver_ address to receive deposit fees
     /// @param depositFee_ initial deposit fee
     /// @param feePrecision_ denominiator for fees
@@ -102,7 +102,7 @@ contract TestMichiHelper is Ownable {
         address erc6551Registry_,
         address erc6551Implementation_,
         address erc6551Proxy_,
-        address michiWalletNFT_,
+        address pichiWalletNFT_,
         address feeReceiver_,
         uint256 depositFee_,
         uint256 feePrecision_
@@ -110,27 +110,27 @@ contract TestMichiHelper is Ownable {
         erc6551Registry = IERC6551Registry(erc6551Registry_);
         erc6551Implementation = erc6551Implementation_;
         erc6551Proxy = erc6551Proxy_;
-        testMichiWalletNFT = ITestMichiWalletNFT(michiWalletNFT_);
+        testPichiWalletNFT = ITestPichiWalletNFT(pichiWalletNFT_);
         feeReceiver = feeReceiver_;
         depositFee = depositFee_;
         feePrecision = feePrecision_;
     }
 
-    /// @dev mint MichiWalletNFT, deploy 6551 wallet owned by NFT, and initialize to current implementation
+    /// @dev mint PichiWalletNFT, deploy 6551 wallet owned by NFT, and initialize to current implementation
     /// @param quantity number of NFTs and wallets to setup
     function createWallet(uint256 quantity) external payable {
         for (uint256 i = 0; i < quantity; i++) {
-            uint256 currentIndex = testMichiWalletNFT.getCurrentIndex();
-            testMichiWalletNFT.mint(msg.sender);
+            uint256 currentIndex = testPichiWalletNFT.getCurrentIndex();
+            testPichiWalletNFT.mint(msg.sender);
             bytes32 salt = bytes32(abi.encode(0));
             address payable newWallet = payable(
                 erc6551Registry.createAccount(
-                    erc6551Proxy, salt, block.chainid, address(testMichiWalletNFT), currentIndex
+                    erc6551Proxy, salt, block.chainid, address(testPichiWalletNFT), currentIndex
                 )
             );
             AccountProxy(newWallet).initialize(erc6551Implementation);
             if (AccountV3Upgradable(newWallet).owner() != msg.sender) revert OwnerMismatch();
-            emit WalletCreated(msg.sender, newWallet, address(testMichiWalletNFT), currentIndex);
+            emit WalletCreated(msg.sender, newWallet, address(testPichiWalletNFT), currentIndex);
         }
     }
 
