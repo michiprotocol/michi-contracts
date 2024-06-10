@@ -19,6 +19,8 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
     /// @notice contract domain separator for EIP-712 compliance
     bytes32 public domainSeparator;
 
+    uint8 public version;
+
     /// @notice address of wrapped ether
     address public weth;
 
@@ -69,6 +71,7 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
                 address(this)
             )
         );
+        version = 1;
         weth = weth_;
         marketplaceFeeRecipient = marketplaceFeeRecipient_;
         marketplaceFee = marketplaceFee_;
@@ -235,6 +238,10 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
         }
 
         emit CollectionRemoved(collectionToRemove);
+    }
+
+    function getVersion() public view returns (uint8) {
+        return version;
     }
 
     function _validateListing(Listing calldata listing) internal view {

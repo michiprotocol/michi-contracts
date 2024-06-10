@@ -894,5 +894,6 @@ contract MarketplaceTest is Test {
         // reinitialize to update domain separator
         proxyInstance.initialize(address(weth), feeReceiver, 100, 10000);
         assertNotEq(proxyInstance.domainSeparator(), oldDomainSeparator);
+        assertEq(proxyInstance.getVersion(), 2);
     }
 }
