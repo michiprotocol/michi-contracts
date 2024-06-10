@@ -50,12 +50,9 @@ contract PichiMarketplaceV2 is IPichiMarketplace, Initializable, OwnableUpgradea
     address[] public listAcceptedCollections;
 
     /// @notice Initializes contract variables during deployment
-    /// @param weth_ Address of wrapped ether
-    /// @param marketplaceFeeRecipient_ Address of fee recipient
-    /// @param marketplaceFee_ Marketplace fee
-    /// @param precision_ Denominator for marketplace fee
     function initialize(address weth_, address marketplaceFeeRecipient_, uint256 marketplaceFee_, uint256 precision_)
         external
+        reinitializer(2)
     {
         if (weth_ == address(0) || marketplaceFeeRecipient_ == address(0)) revert InvalidAddress();
         if (precision_ == 0) revert InvalidValue();
@@ -72,8 +69,6 @@ contract PichiMarketplaceV2 is IPichiMarketplace, Initializable, OwnableUpgradea
         marketplaceFeeRecipient = marketplaceFeeRecipient_;
         marketplaceFee = marketplaceFee_;
         precision = precision_;
-
-        __Ownable_init();
     }
 
     /// @notice Cancels all orders for a user by setting their userMinOrderNonce to minNonce specified
@@ -234,10 +229,6 @@ contract PichiMarketplaceV2 is IPichiMarketplace, Initializable, OwnableUpgradea
         }
 
         emit CollectionRemoved(collectionToRemove);
-    }
-
-    function getVersion() public view returns (uint256) {
-        return 2;
     }
 
     function _validateListing(Listing calldata listing) internal view {

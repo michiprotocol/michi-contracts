@@ -889,7 +889,10 @@ contract MarketplaceTest is Test {
         v2Marketplace = new PichiMarketplaceV2();
         proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(transparentProxy)), address(v2Marketplace));
 
-        uint256 currentVersion = PichiMarketplaceV2(address(transparentProxy)).getVersion();
-        assertEq(currentVersion, 2);
+        bytes32 oldDomainSeparator = proxyInstance.domainSeparator();
+
+        // reinitialize to update domain separator
+        proxyInstance.initialize(address(weth), feeReceiver, 100, 10000);
+        assertNotEq(proxyInstance.domainSeparator(), oldDomainSeparator);
     }
 }
