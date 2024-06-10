@@ -111,14 +111,14 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
 
         _validateListing(listing);
 
+        isUserNonceExecutedOrCancelled[listing.seller][listing.nonce] = true;
+
         if (msg.value != 0) {
             if (listing.order.currency != weth) revert CurrencyMismatch();
             _transferWalletForPayment(listing.order, listing.seller, msg.sender, true);
         } else {
             _transferWalletForPayment(listing.order, listing.seller, msg.sender, false);
         }
-
-        isUserNonceExecutedOrCancelled[listing.seller][listing.nonce] = true;
 
         emit WalletPurchased(
             listing.seller,
@@ -141,9 +141,9 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
 
         _validateOffer(offer);
 
-        _transferWalletForPayment(offer.order, msg.sender, offer.buyer, false);
-
         isUserNonceExecutedOrCancelled[offer.buyer][offer.nonce] = true;
+
+        _transferWalletForPayment(offer.order, msg.sender, offer.buyer, false);
 
         emit WalletPurchased(
             msg.sender,
@@ -235,10 +235,6 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
         }
 
         emit CollectionRemoved(collectionToRemove);
-    }
-
-    function getVersion() public view returns (uint256) {
-        return 1;
     }
 
     function _validateListing(Listing calldata listing) internal view {
