@@ -245,7 +245,7 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
     }
 
     function _validateListing(Listing calldata listing) internal view {
-        if (listing.order.currency == weth) {
+        if (listing.order.currency == weth && msg.value != 0) {
             if (msg.value != listing.order.amount) revert PaymentMismatch();
         } else {
             if (IERC20(listing.order.currency).balanceOf(msg.sender) < listing.order.amount) revert PaymentMismatch();

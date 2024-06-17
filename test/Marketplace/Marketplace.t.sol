@@ -221,6 +221,61 @@ contract MarketplaceTest is Test {
         assertEq(usdt.balanceOf(proxyInstance.marketplaceFeeRecipient()), expectedFees);
     }
 
+    function testExecuteListingWETH() public {
+        // user1 creates weth listing
+        vm.prank(user1);
+        pichiWalletNFT.setApprovalForAll(address(transparentProxy), true);
+
+        SignatureUtils.Listing memory wethListing = SignatureUtils.Listing({
+            seller: user1,
+            collection: address(pichiWalletNFT),
+            currency: address(weth),
+            tokenId: 0,
+            amount: 1 ether,
+            expiry: block.timestamp + 1 days,
+            nonce: 1
+        });
+
+        bytes32 wethListingDigest = sigUtils.getTypedListingHash(wethListing);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(user1PrivateKey, wethListingDigest);
+
+        uint256 sellerBalanceWETH = weth.balanceOf(user1);
+
+        uint256 fee = proxyInstance.marketplaceFee();
+        uint256 precision = proxyInstance.precision();
+        uint256 expectedFees = wethListing.amount * fee / precision;
+        uint256 paymentAmountAfterFees = wethListing.amount - expectedFees;
+
+        // create signed listing struct
+        Listing memory signedListing = Listing({
+            order: Order({
+                collection: wethListing.collection,
+                currency: wethListing.currency,
+                tokenId: wethListing.tokenId,
+                amount: wethListing.amount,
+                expiry: wethListing.expiry
+            }),
+            seller: wethListing.seller,
+            v: v,
+            r: r,
+            s: s,
+            nonce: wethListing.nonce
+        });
+
+        console.log("buyer weth balance is:", weth.balanceOf(user2));
+
+        // user2 purchases listing with weth
+        vm.prank(user2);
+        weth.approve(address(proxyInstance), wethListing.amount);
+        vm.prank(user2);
+        proxyInstance.executeListing{value: 0}(signedListing);
+
+        assertEq(weth.balanceOf(user1), sellerBalanceWETH + paymentAmountAfterFees);
+        assertEq(pichiWalletNFT.ownerOf(wethListing.tokenId), user2);
+        assertEq(weth.balanceOf(proxyInstance.marketplaceFeeRecipient()), expectedFees);
+    }
+
     function testAcceptOffer() public {
         // user2 creates offer to buy user 1's wallet #0
         uint256 offerAmount = 10000e18;
