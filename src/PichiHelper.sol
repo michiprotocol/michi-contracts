@@ -14,10 +14,10 @@ contract PichiHelper is Ownable {
     using SafeERC20 for IERC20;
 
     /// @notice instance of Pichi Wallet NFT (NFT that represents 6551 wallet)
-    IPichiWalletNFT public pichiWalletNFT;
+    IPichiWalletNFT public immutable pichiWalletNFT;
 
     /// @notice instance of ERC6551 Registry
-    IERC6551Registry public erc6551Registry;
+    IERC6551Registry public immutable erc6551Registry;
 
     /// @notice instance of current 6551 wallet implementation
     address public erc6551Implementation;
