@@ -709,7 +709,7 @@ contract MarketplaceTest is Test {
 
         // user1 tries to cancel order 3 again
         vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.OrderAlreadyCancelled.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.OrderAlreadyCancelledOrExecuted.selector));
         proxyInstance.cancelOrdersForCaller(a);
     }
 
