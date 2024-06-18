@@ -51,6 +51,10 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
     /// @notice array of accepted collections
     address[] public listAcceptedCollections;
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Initializes contract variables during deployment
     /// @param weth_ Address of wrapped ether
     /// @param marketplaceFeeRecipient_ Address of fee recipient
