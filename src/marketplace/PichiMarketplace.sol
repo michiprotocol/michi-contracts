@@ -63,7 +63,7 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
         if (marketplaceFee_ > 1000) revert InvalidFee();
         domainSeparator = keccak256(
             abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId, address verifyingContract)"),
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
                 keccak256("PichiMarketplace"),
                 keccak256(bytes("1")),
                 block.chainid,
