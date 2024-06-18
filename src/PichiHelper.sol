@@ -100,6 +100,7 @@ contract PichiHelper is Ownable {
         uint256 depositFee_,
         uint256 feePrecision_
     ) {
+        if (depositFee_ > 500) revert InvalidDepositFee(depositFee_);
         erc6551Registry = IERC6551Registry(erc6551Registry_);
         erc6551Implementation = erc6551Implementation_;
         erc6551Proxy = erc6551Proxy_;
