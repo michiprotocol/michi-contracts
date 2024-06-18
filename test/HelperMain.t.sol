@@ -47,8 +47,7 @@ contract HelperTest is Test {
             address(proxy),
             address(pichiWalletNFT),
             feeRecipient,
-            0,
-            10000
+            0
         );
     }
 

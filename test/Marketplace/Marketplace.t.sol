@@ -76,7 +76,7 @@ contract MarketplaceTest is Test {
         ITransparentUpgradeableProxy(address(transparentProxy)).changeAdmin(address(proxyAdmin));
         proxyInstance = PichiMarketplace(address(transparentProxy));
 
-        proxyInstance.initialize(address(weth), feeReceiver, 100, 10000);
+        proxyInstance.initialize(address(weth), feeReceiver, 100);
 
         vm.prank(user1);
         bytes32 domainSeparator = proxyInstance.domainSeparator();
@@ -947,7 +947,7 @@ contract MarketplaceTest is Test {
         bytes32 oldDomainSeparator = proxyInstance.domainSeparator();
 
         // reinitialize to update domain separator
-        proxyInstance.initialize(address(weth), feeReceiver, 100, 10000);
+        proxyInstance.initialize(address(weth), feeReceiver, 100);
         assertNotEq(proxyInstance.domainSeparator(), oldDomainSeparator);
         assertEq(proxyInstance.getVersion(), 2);
     }

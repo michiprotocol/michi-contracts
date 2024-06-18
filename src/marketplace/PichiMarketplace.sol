@@ -31,7 +31,7 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
     uint256 public marketplaceFee;
 
     /// @notice denominator for marketplace fee
-    uint256 public precision;
+    uint256 public immutable precision = 10000;
 
     /// @notice minimum order nonce for orders that can be settled
     mapping(address => uint256) public userMinOrderNonce;
@@ -55,14 +55,12 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
     /// @param weth_ Address of wrapped ether
     /// @param marketplaceFeeRecipient_ Address of fee recipient
     /// @param marketplaceFee_ Marketplace fee
-    /// @param precision_ Denominator for marketplace fee
-    function initialize(address weth_, address marketplaceFeeRecipient_, uint256 marketplaceFee_, uint256 precision_)
+    function initialize(address weth_, address marketplaceFeeRecipient_, uint256 marketplaceFee_)
         external
         initializer
     {
         if (weth_ == address(0) || marketplaceFeeRecipient_ == address(0)) revert InvalidAddress();
         if (marketplaceFee_ > 1000) revert InvalidFee();
-        if (precision_ == 0) revert InvalidValue();
         domainSeparator = keccak256(
             abi.encode(
                 keccak256("EIP712Domain(string name,string version,uint256 chainId, address verifyingContract)"),
@@ -76,7 +74,6 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
         weth = weth_;
         marketplaceFeeRecipient = marketplaceFeeRecipient_;
         marketplaceFee = marketplaceFee_;
-        precision = precision_;
 
         __Ownable_init();
     }

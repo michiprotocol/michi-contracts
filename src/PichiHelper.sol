@@ -30,7 +30,7 @@ contract PichiHelper is Ownable {
 
     uint256 public depositFee;
 
-    uint256 public feePrecision;
+    uint256 public immutable feePrecision = 10000;
 
     /// @notice tracks total deposits indexed by user and token
     mapping(address => mapping(address => uint256)) public depositsByAccountByToken;
@@ -90,15 +90,13 @@ contract PichiHelper is Ownable {
     /// @param pichiWalletNFT_ address of PichiWalletNFT ERC721
     /// @param feeReceiver_ address to receive deposit fees
     /// @param depositFee_ initial deposit fee
-    /// @param feePrecision_ denominiator for fees
     constructor(
         address erc6551Registry_,
         address erc6551Implementation_,
         address erc6551Proxy_,
         address pichiWalletNFT_,
         address feeReceiver_,
-        uint256 depositFee_,
-        uint256 feePrecision_
+        uint256 depositFee_
     ) {
         if (depositFee_ > 500) revert InvalidDepositFee(depositFee_);
         erc6551Registry = IERC6551Registry(erc6551Registry_);
@@ -107,7 +105,6 @@ contract PichiHelper is Ownable {
         pichiWalletNFT = IPichiWalletNFT(pichiWalletNFT_);
         feeReceiver = feeReceiver_;
         depositFee = depositFee_;
-        feePrecision = feePrecision_;
     }
 
     /// @notice mint PichiWalletNFT, deploy 6551 wallet owned by NFT, and initialize to current implementation
