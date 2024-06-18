@@ -61,7 +61,7 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
     /// @param marketplaceFee_ Marketplace fee
     function initialize(address weth_, address marketplaceFeeRecipient_, uint256 marketplaceFee_)
         external
-        initializer
+        reinitializer(1)
     {
         if (weth_ == address(0) || marketplaceFeeRecipient_ == address(0)) revert InvalidAddress();
         if (marketplaceFee_ > 1000) revert InvalidFee();
