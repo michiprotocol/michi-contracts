@@ -61,6 +61,7 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
         initializer
     {
         if (weth_ == address(0) || marketplaceFeeRecipient_ == address(0)) revert InvalidAddress();
+        if (marketplaceFee_ > 1000) revert InvalidFee();
         if (precision_ == 0) revert InvalidValue();
         domainSeparator = keccak256(
             abi.encode(
