@@ -691,7 +691,7 @@ contract MarketplaceTest is Test {
     }
 
     function testCancellingOrders() public {
-        // assume user1 has already created 3 offers of nonces 1, 2, and 3
+        // assume user1 has already created 3 offers of nonces 1, 2, 3, and 4
         // user1 cancels orders 1 and 2
         vm.prank(user1);
         proxyInstance.cancelAllOrdersForCaller(2);
@@ -709,8 +709,14 @@ contract MarketplaceTest is Test {
 
         // user1 tries to cancel order 3 again
         vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(IPichiMarketplace.OrderAlreadyCancelledOrExecuted.selector));
         proxyInstance.cancelOrdersForCaller(a);
+
+        // user1 tries to cancel orders 3 and 4
+        uint256[] memory b = new uint256[](2);
+        b[0] = 3;
+        b[1] = 4;
+        vm.prank(user1);
+        proxyInstance.cancelOrdersForCaller(b);
     }
 
     function testSellerNotOwner() public {

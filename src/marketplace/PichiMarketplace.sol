@@ -98,8 +98,6 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
         if (orderNonces.length == 0) revert ArrayEmpty();
 
         for (uint256 i = 0; i < orderNonces.length; i++) {
-            if (orderNonces[i] <= userMinOrderNonce[msg.sender]) revert NonceLowerThanCurrent();
-            if (isUserNonceExecutedOrCancelled[msg.sender][orderNonces[i]]) revert OrderAlreadyCancelledOrExecuted();
             isUserNonceExecutedOrCancelled[msg.sender][orderNonces[i]] = true;
         }
 
