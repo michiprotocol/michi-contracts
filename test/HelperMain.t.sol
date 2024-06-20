@@ -51,6 +51,83 @@ contract HelperTest is Test {
         );
     }
 
+    function testCreateWalletWithTBADeployedNotInitialized() public {
+        address user1 = vm.addr(1);
+        address user2 = vm.addr(2);
+
+        uint256 index = pichiWalletNFT.currentIndex();
+        // compute predicted address using expected id
+        address computedAddress = registry.account(address(proxy), 0, block.chainid, address(pichiWalletNFT), index);
+
+        // deploy TBA manually from user2
+        vm.prank(user2);
+        address payable tba =
+            payable(registry.createAccount(address(proxy), 0, block.chainid, address(pichiWalletNFT), index));
+        assertEq(computedAddress, tba);
+
+        // try to createAccount from user1
+        vm.prank(user1);
+        pichiHelper.createWallet(1);
+
+        // check that predicted address is owned by user1
+        AccountV3Upgradable account = AccountV3Upgradable(payable(computedAddress));
+        assertEq(account.owner(), user1);
+    }
+
+    function testCreateWalletWithTBADeployedAndInitialized() public {
+        address user1 = vm.addr(1);
+        address user2 = vm.addr(2);
+
+        uint256 index = pichiWalletNFT.currentIndex();
+        // compute predicted address using expected id
+        address computedAddress = registry.account(address(proxy), 0, block.chainid, address(pichiWalletNFT), index);
+
+        // deploy TBA manually from user2
+        vm.prank(user2);
+        address payable tba =
+            payable(registry.createAccount(address(proxy), 0, block.chainid, address(pichiWalletNFT), index));
+        assertEq(computedAddress, tba);
+
+        // user2 initialize tba with upgradable implementation
+        vm.prank(user2);
+        AccountProxy(tba).initialize(address(upgradeableImplementation));
+        console.log("initialized");
+
+        // try to createAccount from user1
+        vm.prank(user1);
+        pichiHelper.createWallet(1);
+
+        // check that predicted address is owned by user1
+        AccountV3Upgradable account = AccountV3Upgradable(payable(computedAddress));
+        assertEq(account.owner(), user1);
+    }
+
+    function testManuallyMintNFTWhenTBADeployedAndInitialized() public {
+        address user1 = vm.addr(1);
+        address user2 = vm.addr(2);
+
+        uint256 index = pichiWalletNFT.currentIndex();
+        // compute predicted address using expected id
+        address computedAddress = registry.account(address(proxy), 0, block.chainid, address(pichiWalletNFT), index);
+
+        // deploy TBA manually from user2
+        vm.prank(user2);
+        address payable tba =
+            payable(registry.createAccount(address(proxy), 0, block.chainid, address(pichiWalletNFT), index));
+        assertEq(computedAddress, tba);
+
+        // user2 initialize tba with upgradable implementation
+        vm.prank(user2);
+        AccountProxy(tba).initialize(address(upgradeableImplementation));
+        console.log("initialized");
+
+        vm.prank(user1);
+        pichiWalletNFT.mint{value: 0}(user1);
+        // check that predicted address is owned by user1
+        AccountV3Upgradable account = AccountV3Upgradable(payable(computedAddress));
+        assertEq(account.owner(), user1);
+    }
+
     function testCreateWallet() public {
         address user1 = vm.addr(1);
         uint256 index = pichiWalletNFT.currentIndex();
