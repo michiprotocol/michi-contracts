@@ -114,15 +114,13 @@ contract PichiHelper is Ownable {
         if (msg.value != mintPrice * quantity) revert InvalidPayableAmount(msg.value);
         for (uint256 i = 0; i < quantity; i++) {
             uint256 currentIndex = pichiWalletNFT.getCurrentIndex();
-            bytes32 salt = bytes32(abi.encode(0));
-            address computedTba =
-                erc6551Registry.account(erc6551Proxy, salt, block.chainid, address(pichiWalletNFT), currentIndex);
             pichiWalletNFT.mint{value: mintPrice}(msg.sender);
-            try erc6551Registry.createAccount(erc6551Proxy, salt, block.chainid, address(pichiWalletNFT), currentIndex)
-            {} catch {}
-            try AccountProxy(payable(computedTba)).initialize(erc6551Implementation) {} catch {}
-            if (AccountV3Upgradable(payable(computedTba)).owner() != msg.sender) revert OwnerMismatch();
-            emit WalletCreated(msg.sender, computedTba, address(pichiWalletNFT), currentIndex);
+            bytes32 salt = bytes32(abi.encode(0));
+            address tba =
+                erc6551Registry.createAccount(erc6551Proxy, salt, block.chainid, address(pichiWalletNFT), currentIndex);
+            try AccountProxy(payable(tba)).initialize(erc6551Implementation) {} catch {}
+            if (AccountV3Upgradable(payable(tba)).owner() != msg.sender) revert OwnerMismatch();
+            emit WalletCreated(msg.sender, tba, address(pichiWalletNFT), currentIndex);
         }
     }
 
