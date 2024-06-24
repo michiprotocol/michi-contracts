@@ -102,6 +102,20 @@ contract HelperTest is Test {
         assertEq(account.owner(), user1);
     }
 
+    function testWhenImplementationIsInvalid() public {
+        address feeRecipient = vm.addr(5);
+
+        // deploy new pichiHelper with invalid implementation
+        pichiHelper =
+            new PichiHelper(address(registry), address(0), address(proxy), address(pichiWalletNFT), feeRecipient, 0);
+
+        address user1 = vm.addr(1);
+
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSelector(PichiHelper.InitializationFailed.selector));
+        pichiHelper.createWallet(1);
+    }
+
     function testManuallyMintNFTWhenTBADeployedAndInitialized() public {
         address user1 = vm.addr(1);
         address user2 = vm.addr(2);

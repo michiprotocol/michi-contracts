@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import "erc6551/interfaces/IERC6551Registry.sol";
 import "tokenbound/src/AccountV3Upgradable.sol";
@@ -62,6 +63,8 @@ contract PichiHelper is Ownable {
     /// @notice error returned when a user sends an invalid eth amount
     error InvalidPayableAmount(uint256 amount);
 
+    error InitializationFailed();
+
     /// @notice error returned when a user tries to deposit an unauthorized token
     error UnauthorizedToken(address token);
 
@@ -107,20 +110,44 @@ contract PichiHelper is Ownable {
         depositFee = depositFee_;
     }
 
+    function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
+    }
+
     /// @notice mint PichiWalletNFT, deploy 6551 wallet owned by NFT, and initialize to current implementation
     /// @param quantity number of NFTs and wallets to setup
     function createWallet(uint256 quantity) external payable {
         uint256 mintPrice = pichiWalletNFT.getMintPrice();
         if (msg.value != mintPrice * quantity) revert InvalidPayableAmount(msg.value);
         for (uint256 i = 0; i < quantity; i++) {
-            uint256 currentIndex = pichiWalletNFT.getCurrentIndex();
-            pichiWalletNFT.mint{value: mintPrice}(msg.sender);
             bytes32 salt = bytes32(abi.encode(0));
-            address tba =
-                erc6551Registry.createAccount(erc6551Proxy, salt, block.chainid, address(pichiWalletNFT), currentIndex);
-            try AccountProxy(payable(tba)).initialize(erc6551Implementation) {} catch {}
-            if (AccountV3Upgradable(payable(tba)).owner() != msg.sender) revert OwnerMismatch();
-            emit WalletCreated(msg.sender, tba, address(pichiWalletNFT), currentIndex);
+            bool success = false;
+            while (!success) {
+                uint256 currentIndex = pichiWalletNFT.getCurrentIndex();
+                pichiWalletNFT.mint{value: mintPrice}(address(this));
+                address tba = erc6551Registry.createAccount(
+                    erc6551Proxy, salt, block.chainid, address(pichiWalletNFT), currentIndex
+                );
+                try AccountProxy(payable(tba)).initialize(erc6551Implementation) {
+                    if (AccountV3Upgradable(payable(tba)).owner() != address(this)) revert OwnerMismatch();
+                    success = true;
+                    IERC721(address(pichiWalletNFT)).safeTransferFrom(address(this), msg.sender, currentIndex);
+                    emit WalletCreated(msg.sender, tba, address(pichiWalletNFT), currentIndex);
+                } catch (bytes memory reason) {
+                    bytes4 errorSelector = bytes4(reason);
+                    if (errorSelector == InvalidImplementation.selector) {
+                        revert InitializationFailed();
+                    } else if (errorSelector == AlreadyInitialized.selector) {
+                        if (AccountV3Upgradable(payable(tba)).owner() == address(this)) {
+                            success = true;
+                            IERC721(address(pichiWalletNFT)).safeTransferFrom(address(this), msg.sender, currentIndex);
+                            emit WalletCreated(msg.sender, tba, address(pichiWalletNFT), currentIndex);
+                        } else {
+                            IERC721(address(pichiWalletNFT)).safeTransferFrom(address(this), address(0), currentIndex);
+                        }
+                    }
+                }
+            }
         }
     }
 
