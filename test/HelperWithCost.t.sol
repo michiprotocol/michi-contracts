@@ -48,6 +48,9 @@ contract HelperCostTest is Test {
             feeRecipient,
             0
         );
+
+        // give pichiHelper increment role on pichiWalletNFT
+        pichiWalletNFT.grantIncrementRole(address(pichiHelper));
     }
 
     function testCreateWallet() public {

@@ -49,6 +49,9 @@ contract HelperTest is Test {
             feeRecipient,
             0
         );
+
+        // give pichiHelper increment role on pichiWalletNFT
+        pichiWalletNFT.grantIncrementRole(address(pichiHelper));
     }
 
     function testCreateWalletWithTBADeployedNotInitialized() public {
@@ -66,11 +69,14 @@ contract HelperTest is Test {
         assertEq(computedAddress, tba);
 
         // try to createAccount from user1
+        // should skip over next tokenId as TBA has beeen created and initialized
         vm.prank(user1);
         pichiHelper.createWallet(1);
 
+        address newComputedAddress =
+            registry.account(address(proxy), 0, block.chainid, address(pichiWalletNFT), index + 1);
         // check that predicted address is owned by user1
-        AccountV3Upgradable account = AccountV3Upgradable(payable(computedAddress));
+        AccountV3Upgradable account = AccountV3Upgradable(payable(newComputedAddress));
         assertEq(account.owner(), user1);
     }
 
@@ -94,11 +100,14 @@ contract HelperTest is Test {
         console.log("initialized");
 
         // try to createAccount from user1
+        // should skip over next tokenId as TBA has beeen created and initialized
         vm.prank(user1);
         pichiHelper.createWallet(1);
 
+        address newComputedAddress =
+            registry.account(address(proxy), 0, block.chainid, address(pichiWalletNFT), index + 1);
         // check that predicted address is owned by user1
-        AccountV3Upgradable account = AccountV3Upgradable(payable(computedAddress));
+        AccountV3Upgradable account = AccountV3Upgradable(payable(newComputedAddress));
         assertEq(account.owner(), user1);
     }
 
@@ -135,7 +144,6 @@ contract HelperTest is Test {
         AccountProxy(tba).initialize(address(upgradeableImplementation));
         console.log("initialized");
 
-        vm.prank(user1);
         pichiWalletNFT.mint{value: 0}(user1);
         // check that predicted address is owned by user1
         AccountV3Upgradable account = AccountV3Upgradable(payable(computedAddress));
