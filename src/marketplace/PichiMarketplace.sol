@@ -13,7 +13,7 @@ import {Order, Listing, Offer} from "../libraries/OrderTypes.sol";
 /// @title PichiMarketplace
 /// @dev NFT Marketplace for trading of ERC-6551 Accounts from Pichi Finance
 /// @dev Utilizes EIP-712 signatures for off-chain signing and on-chain settlement of orders
-contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeable {
+contract PichiMarketplace is IPichiMarketplace, OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
     /// @notice contract domain separator for EIP-712 compliance

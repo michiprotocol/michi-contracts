@@ -110,10 +110,6 @@ contract PichiHelper is Ownable {
         depositFee = depositFee_;
     }
 
-    function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
-        return IERC721Receiver.onERC721Received.selector;
-    }
-
     /// @notice mint PichiWalletNFT, deploy 6551 wallet owned by NFT, and initialize to current implementation
     /// @param quantity number of NFTs and wallets to setup
     function createWallet(uint256 quantity) external payable {
@@ -218,6 +214,4 @@ contract PichiHelper is Ownable {
     function updateProxy(address newProxy) external onlyOwner {
         erc6551Proxy = newProxy;
     }
-
-    function _dummyMint() internal {}
 }
