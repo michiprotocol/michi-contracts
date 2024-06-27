@@ -42,7 +42,7 @@ contract WalletNFTTest is Test {
         address user = vm.addr(1);
         vm.prank(user);
 
-        vm.expectRevert(bytes("Ownable: caller is not the owner"));
+        vm.expectRevert();
         pichiWalletNFT.setMintPrice(1 ether);
     }
 

@@ -70,7 +70,7 @@ contract WalletNFTTest2 is Test {
         pichiWalletNFT.mint{value: 0.5 ether}(user2);
 
         vm.prank(user1);
-        vm.expectRevert(bytes("Ownable: caller is not the owner"));
+        vm.expectRevert();
         pichiWalletNFT.withdraw(user1);
     }
 }

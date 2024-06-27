@@ -13,7 +13,7 @@ import {Order, Listing, Offer} from "../libraries/OrderTypes.sol";
 /// @title PichiMarketplace
 /// @dev NFT Marketplace for trading of ERC-6551 Accounts from Pichi Finance
 /// @dev Utilizes EIP-712 signatures for off-chain signing and on-chain settlement of orders
-contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeable {
+contract PichiMarketplace is IPichiMarketplace, OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
     /// @notice contract domain separator for EIP-712 compliance
@@ -31,7 +31,7 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
     uint256 public marketplaceFee;
 
     /// @notice denominator for marketplace fee
-    uint256 public precision;
+    uint256 public immutable precision = 10000;
 
     /// @notice minimum order nonce for orders that can be settled
     mapping(address => uint256) public userMinOrderNonce;
@@ -51,20 +51,23 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
     /// @notice array of accepted collections
     address[] public listAcceptedCollections;
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Initializes contract variables during deployment
     /// @param weth_ Address of wrapped ether
     /// @param marketplaceFeeRecipient_ Address of fee recipient
     /// @param marketplaceFee_ Marketplace fee
-    /// @param precision_ Denominator for marketplace fee
-    function initialize(address weth_, address marketplaceFeeRecipient_, uint256 marketplaceFee_, uint256 precision_)
+    function initialize(address weth_, address marketplaceFeeRecipient_, uint256 marketplaceFee_)
         external
-        initializer
+        reinitializer(1)
     {
         if (weth_ == address(0) || marketplaceFeeRecipient_ == address(0)) revert InvalidAddress();
-        if (precision_ == 0) revert InvalidValue();
+        if (marketplaceFee_ > 1000) revert InvalidFee();
         domainSeparator = keccak256(
             abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId, address verifyingContract)"),
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
                 keccak256("PichiMarketplace"),
                 keccak256(bytes("1")),
                 block.chainid,
@@ -75,7 +78,6 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
         weth = weth_;
         marketplaceFeeRecipient = marketplaceFeeRecipient_;
         marketplaceFee = marketplaceFee_;
-        precision = precision_;
 
         __Ownable_init();
     }
@@ -96,8 +98,6 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
         if (orderNonces.length == 0) revert ArrayEmpty();
 
         for (uint256 i = 0; i < orderNonces.length; i++) {
-            if (orderNonces[i] <= userMinOrderNonce[msg.sender]) revert NonceLowerThanCurrent();
-            if (isUserNonceExecutedOrCancelled[msg.sender][orderNonces[i]]) revert OrderAlreadyCancelled();
             isUserNonceExecutedOrCancelled[msg.sender][orderNonces[i]] = true;
         }
 
@@ -245,7 +245,7 @@ contract PichiMarketplace is IPichiMarketplace, Initializable, OwnableUpgradeabl
     }
 
     function _validateListing(Listing calldata listing) internal view {
-        if (listing.order.currency == weth) {
+        if (listing.order.currency == weth && msg.value != 0) {
             if (msg.value != listing.order.amount) revert PaymentMismatch();
         } else {
             if (IERC20(listing.order.currency).balanceOf(msg.sender) < listing.order.amount) revert PaymentMismatch();

@@ -45,9 +45,11 @@ contract HelperTestFuzz is Test {
             address(proxy),
             address(pichiWalletNFT),
             feeRecipient,
-            0,
-            10000
+            0
         );
+
+        // give pichiHelper increment role on pichiWalletNFT
+        pichiWalletNFT.grantIncrementRole(address(pichiHelper));
     }
 
     function testCreateWallet(uint256 quantity) public {
