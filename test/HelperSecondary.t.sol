@@ -14,12 +14,12 @@ import "tokenbound/lib/multicall-authenticated/src/Multicall3.sol";
 
 import "./TestContracts/MockYT.sol";
 
-import "src/MichiWalletNFT.sol";
-import {MichiHelper} from "src/MichiHelper.sol";
+import "src/PichiWalletNFT.sol";
+import {PichiHelper} from "src/PichiHelper.sol";
 
 contract HelperSecondaryTest is Test {
-    MichiWalletNFT public michiWalletNFT;
-    MichiHelper public michiHelper;
+    PichiWalletNFT public pichiWalletNFT;
+    PichiHelper public pichiHelper;
     MockYT public mockYT;
 
     Multicall3 public multicall;
@@ -32,7 +32,7 @@ contract HelperSecondaryTest is Test {
     function setUp() public {
         address feeRecipient = vm.addr(5);
 
-        michiWalletNFT = new MichiWalletNFT(0, 0);
+        pichiWalletNFT = new PichiWalletNFT(0, 0);
         registry = new ERC6551Registry();
         guardian = new AccountGuardian(address(this));
         multicall = new Multicall3();
@@ -40,51 +40,53 @@ contract HelperSecondaryTest is Test {
             new AccountV3Upgradable(address(1), address(multicall), address(registry), address(guardian));
         proxy = new AccountProxy(address(guardian), address(upgradeableImplementation));
         mockYT = new MockYT();
-        michiHelper = new MichiHelper(
+        pichiHelper = new PichiHelper(
             address(registry),
             address(upgradeableImplementation),
             address(proxy),
-            address(michiWalletNFT),
+            address(pichiWalletNFT),
             feeRecipient,
-            0,
-            10000
+            0
         );
+
+        // give pichiHelper increment role on pichiWalletNFT
+        pichiWalletNFT.grantIncrementRole(address(pichiHelper));
     }
 
     function testDepositFee() public {
-        assertEq(michiHelper.depositFee(), 0);
+        assertEq(pichiHelper.depositFee(), 0);
     }
 
     function testPrecision() public {
-        assertEq(michiHelper.feePrecision(), 10000);
+        assertEq(pichiHelper.feePrecision(), 10000);
     }
 
     function testChangeDepositFee() public {
-        michiHelper.setDepositFee(50);
-        assertEq(michiHelper.depositFee(), 50);
+        pichiHelper.setDepositFee(50);
+        assertEq(pichiHelper.depositFee(), 50);
     }
 
     function testRevertWhenDepositFeeTooHigh() public {
         uint256 newFee = 50000;
-        vm.expectRevert(abi.encodeWithSelector(MichiHelper.InvalidDepositFee.selector, newFee));
-        michiHelper.setDepositFee(newFee);
+        vm.expectRevert(abi.encodeWithSelector(PichiHelper.InvalidDepositFee.selector, newFee));
+        pichiHelper.setDepositFee(newFee);
     }
 
     function testFeeReceiver() public {
         address feeRecipient = vm.addr(5);
-        assertEq(michiHelper.feeReceiver(), feeRecipient);
+        assertEq(pichiHelper.feeReceiver(), feeRecipient);
     }
 
     function testChangeFeeReceiver() public {
         address newFeeRecipient = vm.addr(6);
-        michiHelper.setFeeReceiver(newFeeRecipient);
-        assertEq(michiHelper.feeReceiver(), newFeeRecipient);
+        pichiHelper.setFeeReceiver(newFeeRecipient);
+        assertEq(pichiHelper.feeReceiver(), newFeeRecipient);
     }
 
     function testAddApprovedToken() public {
-        michiHelper.addApprovedToken(address(mockYT));
-        assertEq(michiHelper.approvedToken(address(mockYT)), true);
-        assertEq(michiHelper.listApprovedTokens(0), address(mockYT));
+        pichiHelper.addApprovedToken(address(mockYT));
+        assertEq(pichiHelper.approvedToken(address(mockYT)), true);
+        assertEq(pichiHelper.listApprovedTokens(0), address(mockYT));
     }
 
     function testRemoveApprovedToken() public {
@@ -92,18 +94,18 @@ contract HelperSecondaryTest is Test {
         address randomAddress2 = vm.addr(8);
         address randomAddress3 = vm.addr(9);
 
-        michiHelper.addApprovedToken(randomAddress1);
-        michiHelper.addApprovedToken(randomAddress2);
-        michiHelper.addApprovedToken(randomAddress3);
+        pichiHelper.addApprovedToken(randomAddress1);
+        pichiHelper.addApprovedToken(randomAddress2);
+        pichiHelper.addApprovedToken(randomAddress3);
 
-        assertEq(michiHelper.approvedToken(randomAddress1), true);
-        assertEq(michiHelper.approvedToken(randomAddress2), true);
-        assertEq(michiHelper.approvedToken(randomAddress3), true);
-        assertEq(michiHelper.listApprovedTokens(0), randomAddress1);
-        assertEq(michiHelper.listApprovedTokens(1), randomAddress2);
-        assertEq(michiHelper.listApprovedTokens(2), randomAddress3);
+        assertEq(pichiHelper.approvedToken(randomAddress1), true);
+        assertEq(pichiHelper.approvedToken(randomAddress2), true);
+        assertEq(pichiHelper.approvedToken(randomAddress3), true);
+        assertEq(pichiHelper.listApprovedTokens(0), randomAddress1);
+        assertEq(pichiHelper.listApprovedTokens(1), randomAddress2);
+        assertEq(pichiHelper.listApprovedTokens(2), randomAddress3);
 
-        michiHelper.removeApprovedToken(randomAddress1);
-        assertEq(michiHelper.approvedToken(randomAddress1), false);
+        pichiHelper.removeApprovedToken(randomAddress1);
+        assertEq(pichiHelper.approvedToken(randomAddress1), false);
     }
 }
