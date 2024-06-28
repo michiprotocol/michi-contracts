@@ -7,4 +7,6 @@ interface IPichiWalletNFT {
     function getMintPrice() external view returns (uint256);
 
     function mint(address recipient) external payable;
+
+    function dummyMint() external;
 }

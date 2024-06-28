@@ -8,7 +8,7 @@ interface IPichiMarketplace {
 
     error ArrayEmpty();
 
-    error OrderAlreadyCancelled();
+    error OrderAlreadyCancelledOrExecuted();
 
     error SellerNotOwner();
 

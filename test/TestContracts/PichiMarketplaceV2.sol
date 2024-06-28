@@ -52,12 +52,11 @@ contract PichiMarketplaceV2 is IPichiMarketplace, Initializable, OwnableUpgradea
     address[] public listAcceptedCollections;
 
     /// @notice Initializes contract variables during deployment
-    function initialize(address weth_, address marketplaceFeeRecipient_, uint256 marketplaceFee_, uint256 precision_)
+    function initialize(address weth_, address marketplaceFeeRecipient_, uint256 marketplaceFee_)
         external
         reinitializer(2)
     {
         if (weth_ == address(0) || marketplaceFeeRecipient_ == address(0)) revert InvalidAddress();
-        if (precision_ == 0) revert InvalidValue();
         domainSeparator = keccak256(
             abi.encode(
                 keccak256("EIP712Domain(string name,string version,uint256 chainId, address verifyingContract)"),
@@ -71,7 +70,6 @@ contract PichiMarketplaceV2 is IPichiMarketplace, Initializable, OwnableUpgradea
         weth = weth_;
         marketplaceFeeRecipient = marketplaceFeeRecipient_;
         marketplaceFee = marketplaceFee_;
-        precision = precision_;
     }
 
     /// @notice Cancels all orders for a user by setting their userMinOrderNonce to minNonce specified
@@ -91,7 +89,7 @@ contract PichiMarketplaceV2 is IPichiMarketplace, Initializable, OwnableUpgradea
 
         for (uint256 i = 0; i < orderNonces.length; i++) {
             if (orderNonces[i] <= userMinOrderNonce[msg.sender]) revert NonceLowerThanCurrent();
-            if (isUserNonceExecutedOrCancelled[msg.sender][orderNonces[i]]) revert OrderAlreadyCancelled();
+            if (isUserNonceExecutedOrCancelled[msg.sender][orderNonces[i]]) revert OrderAlreadyCancelledOrExecuted();
             isUserNonceExecutedOrCancelled[msg.sender][orderNonces[i]] = true;
         }
 
