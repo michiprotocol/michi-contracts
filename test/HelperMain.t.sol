@@ -15,12 +15,12 @@ import "tokenbound/lib/multicall-authenticated/src/Multicall3.sol";
 
 import "./TestContracts/MockYT.sol";
 
-import "src/MichiWalletNFT.sol";
-import {MichiHelper} from "src/MichiHelper.sol";
+import "src/PichiWalletNFT.sol";
+import {PichiHelper} from "src/PichiHelper.sol";
 
 contract HelperTest is Test {
-    MichiWalletNFT public michiWalletNFT;
-    MichiHelper public michiHelper;
+    PichiWalletNFT public pichiWalletNFT;
+    PichiHelper public pichiHelper;
     MockYT public mockYT;
 
     Multicall3 public multicall;
@@ -33,7 +33,7 @@ contract HelperTest is Test {
     function setUp() public {
         address feeRecipient = vm.addr(5);
 
-        michiWalletNFT = new MichiWalletNFT(0, 0);
+        pichiWalletNFT = new PichiWalletNFT(0, 0);
         registry = new ERC6551Registry();
         guardian = new AccountGuardian(address(this));
         multicall = new Multicall3();
@@ -41,29 +41,127 @@ contract HelperTest is Test {
             new AccountV3Upgradable(address(1), address(multicall), address(registry), address(guardian));
         proxy = new AccountProxy(address(guardian), address(upgradeableImplementation));
         mockYT = new MockYT();
-        michiHelper = new MichiHelper(
+        pichiHelper = new PichiHelper(
             address(registry),
             address(upgradeableImplementation),
             address(proxy),
-            address(michiWalletNFT),
+            address(pichiWalletNFT),
             feeRecipient,
-            0,
-            10000
+            0
         );
+
+        // give pichiHelper increment role on pichiWalletNFT
+        pichiWalletNFT.grantIncrementRole(address(pichiHelper));
+    }
+
+    function testCreateWalletWithTBADeployedNotInitialized() public {
+        address user1 = vm.addr(1);
+        address user2 = vm.addr(2);
+
+        uint256 index = pichiWalletNFT.currentIndex();
+        // compute predicted address using expected id
+        address computedAddress = registry.account(address(proxy), 0, block.chainid, address(pichiWalletNFT), index);
+
+        // deploy TBA manually from user2
+        vm.prank(user2);
+        address payable tba =
+            payable(registry.createAccount(address(proxy), 0, block.chainid, address(pichiWalletNFT), index));
+        assertEq(computedAddress, tba);
+
+        // try to createAccount from user1
+        // should skip over next tokenId as TBA has beeen created and initialized
+        vm.prank(user1);
+        pichiHelper.createWallet(1);
+
+        address newComputedAddress =
+            registry.account(address(proxy), 0, block.chainid, address(pichiWalletNFT), index + 1);
+        // check that predicted address is owned by user1
+        AccountV3Upgradable account = AccountV3Upgradable(payable(newComputedAddress));
+        assertEq(account.owner(), user1);
+    }
+
+    function testCreateWalletWithTBADeployedAndInitialized() public {
+        address user1 = vm.addr(1);
+        address user2 = vm.addr(2);
+
+        uint256 index = pichiWalletNFT.currentIndex();
+        // compute predicted address using expected id
+        address computedAddress = registry.account(address(proxy), 0, block.chainid, address(pichiWalletNFT), index);
+
+        // deploy TBA manually from user2
+        vm.prank(user2);
+        address payable tba =
+            payable(registry.createAccount(address(proxy), 0, block.chainid, address(pichiWalletNFT), index));
+        assertEq(computedAddress, tba);
+
+        // user2 initialize tba with upgradable implementation
+        vm.prank(user2);
+        AccountProxy(tba).initialize(address(upgradeableImplementation));
+        console.log("initialized");
+
+        // try to createAccount from user1
+        // should skip over next tokenId as TBA has beeen created and initialized
+        vm.prank(user1);
+        pichiHelper.createWallet(1);
+
+        address newComputedAddress =
+            registry.account(address(proxy), 0, block.chainid, address(pichiWalletNFT), index + 1);
+        // check that predicted address is owned by user1
+        AccountV3Upgradable account = AccountV3Upgradable(payable(newComputedAddress));
+        assertEq(account.owner(), user1);
+    }
+
+    function testWhenImplementationIsInvalid() public {
+        address feeRecipient = vm.addr(5);
+
+        // deploy new pichiHelper with invalid implementation
+        pichiHelper =
+            new PichiHelper(address(registry), address(0), address(proxy), address(pichiWalletNFT), feeRecipient, 0);
+
+        address user1 = vm.addr(1);
+
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSelector(PichiHelper.InitializationFailed.selector));
+        pichiHelper.createWallet(1);
+    }
+
+    function testManuallyMintNFTWhenTBADeployedAndInitialized() public {
+        address user1 = vm.addr(1);
+        address user2 = vm.addr(2);
+
+        uint256 index = pichiWalletNFT.currentIndex();
+        // compute predicted address using expected id
+        address computedAddress = registry.account(address(proxy), 0, block.chainid, address(pichiWalletNFT), index);
+
+        // deploy TBA manually from user2
+        vm.prank(user2);
+        address payable tba =
+            payable(registry.createAccount(address(proxy), 0, block.chainid, address(pichiWalletNFT), index));
+        assertEq(computedAddress, tba);
+
+        // user2 initialize tba with upgradable implementation
+        vm.prank(user2);
+        AccountProxy(tba).initialize(address(upgradeableImplementation));
+        console.log("initialized");
+
+        pichiWalletNFT.mint{value: 0}(user1);
+        // check that predicted address is owned by user1
+        AccountV3Upgradable account = AccountV3Upgradable(payable(computedAddress));
+        assertEq(account.owner(), user1);
     }
 
     function testCreateWallet() public {
         address user1 = vm.addr(1);
-        uint256 index = michiWalletNFT.currentIndex();
+        uint256 index = pichiWalletNFT.currentIndex();
 
         // compute predicted address using expected id
-        address computedAddress = registry.account(address(proxy), 0, block.chainid, address(michiWalletNFT), index);
+        address computedAddress = registry.account(address(proxy), 0, block.chainid, address(pichiWalletNFT), index);
 
         vm.prank(user1);
-        michiHelper.createWallet(1);
+        pichiHelper.createWallet(1);
 
         // check that #0 minted to user1
-        assertEq(michiWalletNFT.ownerOf(index), user1);
+        assertEq(pichiWalletNFT.ownerOf(index), user1);
 
         // check that predicted address is owned by user1
         AccountV3Upgradable account = AccountV3Upgradable(payable(computedAddress));
@@ -73,13 +171,13 @@ contract HelperTest is Test {
     function testDepositAndWithdraw() public {
         address user1 = vm.addr(1);
         address user2 = vm.addr(2);
-        uint256 index = michiWalletNFT.currentIndex();
+        uint256 index = pichiWalletNFT.currentIndex();
 
         // compute predicted address using expected id
-        address computedAddress = registry.account(address(proxy), 0, block.chainid, address(michiWalletNFT), index);
+        address computedAddress = registry.account(address(proxy), 0, block.chainid, address(pichiWalletNFT), index);
 
         vm.prank(user1);
-        michiHelper.createWallet(1);
+        pichiHelper.createWallet(1);
 
         // mint mock YT tokens
         mockYT.mint(user1, 10 ether);
@@ -88,32 +186,32 @@ contract HelperTest is Test {
         assertEq(mockYT.balanceOf(user2), 10 ether);
 
         // add test YT to approved tokens list
-        michiHelper.addApprovedToken(address(mockYT));
-        assertEq(michiHelper.approvedToken(address(mockYT)), true);
+        pichiHelper.addApprovedToken(address(mockYT));
+        assertEq(pichiHelper.approvedToken(address(mockYT)), true);
 
         uint256 totalDepositAmount = 5 ether;
-        uint256 feeAmount = totalDepositAmount * michiHelper.depositFee() * michiHelper.feePrecision();
+        uint256 feeAmount = totalDepositAmount * pichiHelper.depositFee() * pichiHelper.feePrecision();
         uint256 depositAmountAfterFees = totalDepositAmount - feeAmount;
 
         // user2 should fail to deposit YT
         vm.prank(user2);
-        mockYT.approve(address(michiHelper), 10 ether);
+        mockYT.approve(address(pichiHelper), 10 ether);
         vm.prank(user2);
-        vm.expectRevert(abi.encodeWithSelector(MichiHelper.UnauthorizedUser.selector, user2));
-        michiHelper.depositToken(address(mockYT), computedAddress, 5 ether, true);
+        vm.expectRevert(abi.encodeWithSelector(PichiHelper.UnauthorizedUser.selector, user2));
+        pichiHelper.depositToken(address(mockYT), computedAddress, 5 ether, true);
 
         // user1 should succeed in depositing YT
 
         vm.prank(user1);
-        mockYT.approve(address(michiHelper), 10 ether);
+        mockYT.approve(address(pichiHelper), 10 ether);
         vm.prank(user1);
-        michiHelper.depositToken(address(mockYT), computedAddress, 5 ether, true);
+        pichiHelper.depositToken(address(mockYT), computedAddress, 5 ether, true);
 
         assertEq(mockYT.balanceOf(computedAddress), depositAmountAfterFees);
-        assertEq(mockYT.balanceOf(michiHelper.feeReceiver()), feeAmount);
-        assertEq(michiHelper.depositsByAccountByToken(computedAddress, address(mockYT)), depositAmountAfterFees);
-        assertEq(michiHelper.depositsByToken(address(mockYT)), depositAmountAfterFees);
-        assertEq(michiHelper.feesCollectedByToken(address(mockYT)), feeAmount);
+        assertEq(mockYT.balanceOf(pichiHelper.feeReceiver()), feeAmount);
+        assertEq(pichiHelper.depositsByAccountByToken(computedAddress, address(mockYT)), depositAmountAfterFees);
+        assertEq(pichiHelper.depositsByToken(address(mockYT)), depositAmountAfterFees);
+        assertEq(pichiHelper.feesCollectedByToken(address(mockYT)), feeAmount);
 
         // user2 should fail transfering out YT
         AccountV3Upgradable account = AccountV3Upgradable(payable(computedAddress));
